@@ -40,8 +40,6 @@
   //Servo instance                         
     Servo regler;
     Servo servo;
-    //Timer for the servo
-      IntervalTimer servoTimer;
   //IMU instance
     MPU9250 mpu(SPI_CLOCK, SS_PIN, BITS_DLPF_CFG_256HZ_NOLPF2, BITS_DLPF_CFG_256HZ_NOLPF2);
   //Kalman instance
@@ -56,8 +54,6 @@
       volatile uint32_t rxPre = 1;
     //int in which the current challel number to read out is stored
       volatile uint8_t channelNr = 0; 
-    //boolean which stores if the first roud of data input has been passed
-      volatile boolean firstRoundPassed = false;
   //IMU Data  
     //variables for raw values
       int accX, accY, accZ;
@@ -72,26 +68,24 @@
       uint32_t timer;
   //controlLoop
     boolean controlLoopActive = false;
-    volatile boolean startNextRound = false;
 
 //interrupt functions
   //IR
     void IRFalling() {
-      startNextRound = true;
+      controlLoop();
     }
     
   //PPM
     void rxFALLING() {
       if(micros()-rxPre > 8000) {
         channelNr = 0;
-        firstRoundPassed = true;
       }
       else {
         rxData[channelNr] = micros()-rxPre;
         channelNr++;
       }
       rxPre = micros(); 
-      //if((rxData[killSwRx] < 1000) && firstRoundPassed) killAll();  ------------reactivate for practical use!!!!!!!!
+      //if(rxData[killSwRx] < 1000) killAll();  ------------reactivate for practical use!!!!!!!!
     }
     
 void setup() {
@@ -119,9 +113,6 @@ void setup() {
   //initialise esc
     regler.attach(escPin);
     regler.write(0);
-  //start the servo Timer
-    servoTimer.priority(255);
-    servoTimer.begin(controlServos, 30000);
 
   //SPI for IMU
     SPI.setMISO(8);
@@ -189,12 +180,6 @@ void controlMotors() {
   }
 }
 
-void controlServos() {
-  if(firstRoundPassed) {
-    servo.write(map(rxData[liftRx], 990, 2010, 83, 97));
-  }
-}
-
 //Start and Landing foo
   void waitForStartSpin() {
     int16_t zt = 0;
@@ -218,8 +203,15 @@ void controlServos() {
     mpu.set_acc_scale(BITS_FS_2G);
   }
 
+  void landingSecuence() {
+    regler.write(30);
+    zAccPeak();
+    regler.write(0);
+    servo.write(90);
+    
+  }
 void controlLoop() {
-if(controlLoopActive) { 
+  if(controlLoopActive) { 
     //the control Process will be here soon
   }
 }
