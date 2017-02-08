@@ -1,0 +1,9 @@
+(fp_lib_table
+  (lib (name HM-11)(type KiCad)(uri "/Library/Application Support/kicad/rofl/HM-11.pretty")(options "")(descr ""))
+  (lib (name MPU9250)(type KiCad)(uri "/Library/Application Support/kicad/rofl/MPU9250.pretty")(options "")(descr ""))
+  (lib (name roflCopterESC+Servo)(type KiCad)(uri "/Library/Application Support/kicad/rofl/roflCopterESC+Servo.pretty")(options "")(descr ""))
+  (lib (name solenoid)(type KiCad)(uri "/Library/Application Support/kicad/rofl/solenoid.pretty")(options "")(descr ""))
+  (lib (name taranisMicroRX)(type KiCad)(uri "/Library/Application Support/kicad/rofl/taranisMicroRX.pretty")(options "")(descr ""))
+  (lib (name Teensy)(type KiCad)(uri "/Library/Application Support/kicad/rofl/Teensy.pretty")(options "")(descr ""))
+  (lib (name TSOP)(type KiCad)(uri "/Library/Application Support/kicad/rofl/TSOP.pretty")(options "")(descr ""))
+)

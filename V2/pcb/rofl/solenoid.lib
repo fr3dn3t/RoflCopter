@@ -1,0 +1,17 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#
+# solenoid
+#
+DEF solenoid U 0 40 Y Y 1 F N
+F0 "U" 0 0 60 H V C CNN
+F1 "solenoid" 0 0 60 H V C CNN
+F2 "" 0 0 60 H I C CNN
+F3 "" 0 0 60 H I C CNN
+DRAW
+X + 1 100 350 200 D 50 50 1 1 I
+X - 2 -100 350 200 D 50 50 1 1 I
+ENDDRAW
+ENDDEF
+#
+#End Library

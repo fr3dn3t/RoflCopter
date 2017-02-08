@@ -1,0 +1,19 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#
+# roflCopterESC+Servo
+#
+DEF roflCopterESC+Servo U 0 40 Y Y 1 F N
+F0 "U" 0 -700 60 H V C CNN
+F1 "roflCopterESC+Servo" 0 -600 60 H V C CNN
+F2 "" 0 0 60 H I C CNN
+F3 "" 0 0 60 H I C CNN
+DRAW
+X GND 1 -200 0 200 D 50 50 1 1 I
+X ESC 2 -100 0 200 D 50 50 1 1 I
+X Servo 3 0 0 200 D 50 50 1 1 I
+X 5VOUT 4 100 0 200 D 50 50 1 1 I
+ENDDRAW
+ENDDEF
+#
+#End Library

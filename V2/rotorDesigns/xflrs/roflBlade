@@ -1,0 +1,203 @@
+roflCopter
+0.0                          | Mach
+0     0     0.0              | iYsym  iZsym  Zsym
+
+31395.921     53.657    600.000  | Sref   Cref   Bref
+# Note : check consistency of area unit above with length units of the file
+   0.000     0.000     0.000          | Xref   Yref   Zref
+ 0.00                        | CDp  (optional)
+
+
+
+#=================================================
+SURFACE                      | (keyword)
+roflBlade
+#Nchord    Cspace   [ Nspan Sspace ]
+1        1.0
+
+INDEX                        | (keyword)
+1804289383                          | Lsurf
+
+YDUPLICATE
+0.0
+
+SCALE
+1.0  1.0  1.0
+
+TRANSLATE
+0.0  0.0  0.0
+
+ANGLE
+   0.000                         | dAinc
+
+
+#______________
+SECTION                                                     |  (keyword)
+  15.0000    0.0000    0.0000   15.0000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  14.7120    1.2686    0.0000   15.4500   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  14.0250    2.5372    0.0000   16.5000   0.000    2    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  13.0870    3.8058    0.0000   18.0000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  12.0000    5.0744    0.0000   19.7500   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  10.8130    6.3430    0.0000   21.9000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   9.6750    7.6116    0.0000   24.3000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   8.6000    8.8802    0.0000   27.2000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   7.6000   10.1488    0.0000   30.1000   0.000    2    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   3.5500   15.2233    0.0000   44.5000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   2.5330   16.4919    0.0000   48.3200   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   1.4750   17.7605    0.0000   51.6000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   0.5000   19.0291    0.0000   53.9370   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   0.0000   20.2977    0.0000   55.0000   0.000    7    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   0.0000  274.0190    0.0000   55.0000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   0.8000  277.5705    0.0620   54.2000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   3.0000  282.1368    0.1417   52.0000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+   6.0000  285.6884    0.2037   49.0000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  10.0000  288.2252    0.2480   44.5000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  15.0000  291.2694    0.3011   39.0000   0.000    1    1   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  21.0000  294.1106    0.3507   32.0000   0.000    3    2   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  30.5000  297.5607    0.4109   20.5000   0.000    1    2   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  37.2500  299.2350    0.4401   11.7000   0.000    1    2   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+#______________
+SECTION                                                     |  (keyword)
+  44.0000  299.9960    0.4534    3.0000   0.000    1    2   | Xle Yle Zle   Chord Ainc   [ Nspan Sspace ]
+
+AFIL 0.0 1.0
+AG455ct -02f rot..dat
+
+
+
