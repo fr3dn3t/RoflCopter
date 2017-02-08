@@ -1,16 +1,3 @@
-/**
- * Sample program for the MPU9250 using SPI
- *
- * Sample rate of the AK8963 magnetometer is set at 100Hz. 
- * There are only two options: 8Hz or 100Hz so I've set it at 100Hz
- * in the library. This is set by writing to the CNTL1 register
- * during initialisation.
- *
- * Copyright (C) 2015 Brian Chen
- *
- * Open source under the MIT license. See LICENSE.txt.
- */
-
 #include <SPI.h>
 #include <MPU9250.h>
 #include "Kalman.h" // Source: https://github.com/TKJElectronics/KalmanFilter
@@ -69,7 +56,7 @@ void setup() {
 
 	mpu.calib_acc();
 
-  zPeak(); //wait for peak in Z
+  waitForStartSpin(); //wait for peak in Z
 
 /* Set Kalman and gyro starting angle */
   updateMPU9250();
@@ -91,7 +78,7 @@ void loop() {
   delay(10);
 }
 
-void zPeak() {
+void waitForStartSpin() {
   int16_t zt = 0;
   mpu.set_gyro_scale(BITS_FS_1000DPS);
   while(zt > -900) {
