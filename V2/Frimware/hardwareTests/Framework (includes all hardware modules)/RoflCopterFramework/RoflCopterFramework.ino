@@ -239,8 +239,9 @@ void loop() {
 void killAll() {
   if(rxData[killSwRx] > 1800 && validRxValues) {
     HWSERIAL.println("KILL");
-    regler.write(0);
-    cli();
+    regler.write(10);
+    delay(30);
+    //cli();
     //servo.write(90);
     digitalWriteFast(LED, LOW);
     while(1);
