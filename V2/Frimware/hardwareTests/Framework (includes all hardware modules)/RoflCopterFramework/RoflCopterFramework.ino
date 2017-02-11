@@ -42,6 +42,7 @@
     Servo servo;
     //Timer for the servo
       IntervalTimer servoTimer;
+      IntervalTimer blinker;
   //IMU instance
     MPU9250 mpu(SPI_CLOCK, SS_PIN, BITS_DLPF_CFG_256HZ_NOLPF2, BITS_DLPF_CFG_256HZ_NOLPF2);
   //Kalman instance
@@ -56,7 +57,8 @@
       volatile uint32_t rxPre = 1;
     //int in which the current challel number to read out is stored
       volatile uint8_t channelNr = 0; 
-    //boolean which stores if the first roud of data input has been passed
+    //indicates if the data in the channel value array are reliable e.g. there have been two sync breaks, so in the array there are only "real" values synced to the correspondinc channel number
+      volatile uint8_t firstRoundCounter = 2;
       volatile boolean firstRoundPassed = false;
   //IMU Data  
     //variables for raw values
@@ -73,7 +75,12 @@
   //controlLoop
     boolean controlLoopActive = false;
     volatile boolean startNextRound = false;
-
+  //lift control  
+    boolean userLiftControlActive = true;//set false for practical use; will be set to true by start secuence
+  //blinker
+    volatile boolean onOrOff = false;
+    int blinkInterval = 400000;//in us
+  
 //interrupt functions
   //IR
     void IRFalling() {
@@ -81,20 +88,24 @@
     }
     
   //PPM
-    void rxFALLING() {
-      if(micros()-rxPre > 8000) {
-        channelNr = 0;
-        firstRoundPassed = true;
+    void rxFALLING() {//will be called when the ppm peak is over
+      if(micros()-rxPre > 8000) {//if the current peak is the first peank after the the syncro break of 10ms
+        rxPre = micros();
+        channelNr = 0;//reset the channel number to syncronize again
+        firstRoundCounter--;//the values in the first round are complete rubish, since there would'nt have been a first channel sync, this var indicates for the other functions, if the values are reliable
+        if(firstRoundCounter == 0) firstRoundPassed = true;
       }
       else {
         rxData[channelNr] = micros()-rxPre;
+        rxPre = micros();
         channelNr++;
-      }
-      rxPre = micros(); 
+      } 
       //if((rxData[killSwRx] < 1000) && firstRoundPassed) killAll();  ------------reactivate for practical use!!!!!!!!
     }
     
 void setup() {
+  blinker.priority(255);
+  blinker.begin(blinkerFunction, blinkInterval);
   delay(2000);
   //start serial for debugging purposes
     Serial.begin(115200);
@@ -120,7 +131,7 @@ void setup() {
     regler.attach(escPin);
     regler.write(0);
   //start the servo Timer
-    servoTimer.priority(255);
+    servoTimer.priority(254);
     servoTimer.begin(controlServos, 30000);
 
   //SPI for IMU
@@ -150,11 +161,21 @@ void setup() {
     //ir
       attachInterrupt(digitalPinToInterrupt(ir), IRFalling, FALLING);
 
-  HWSERIAL.println("Ready when you are!");
+  //waiting for hwserial respond
+  while(!(HWSERIAL.available() > 0)) {
+    //wait
+  }
+  HWSERIAL.clear();
+  HWSERIAL.println("Ready when you are! Spin!");
   
   //wait for start spin
-    //waitForStartSpin(); //----------reactivate for practical use!!!!!!
+    blinker.end();
+    blinker.begin(blinkerFunction, 200000);
+    waitForStartSpin(); //----------reactivate for practical use!!!!!!
 
+  int m = micros();
+    HWSERIAL.println("Lift off!");
+    HWSERIAL.println(micros() - m);
     /* Set Kalman and gyro starting angle */
   updateMPU9250();
   updatePitchRoll();
@@ -173,8 +194,9 @@ void loop() {
 }
 
 void killAll() {
+  cli();
   regler.write(0);
-  servo.write(90);
+  //servo.write(90);
   digitalWriteFast(LED, LOW);
   while(1);
 }
@@ -190,7 +212,7 @@ void controlMotors() {
 }
 
 void controlServos() {
-  if(firstRoundPassed) {
+  if(firstRoundPassed && userLiftControlActive) {
     servo.write(map(rxData[liftRx], 990, 2010, 83, 97));
   }
 }
@@ -203,11 +225,12 @@ void controlServos() {
       mpu.read_gyro();
       zt = mpu.gyro_data[2]/32.8;
     }
+    blinker.end();
     digitalWriteFast(LED, HIGH);
     mpu.set_gyro_scale(BITS_FS_250DPS);
   }
   
-  void zAccPeak() {
+  void zAccPeak() {//indicates if the copter touches down during landing process
     float zt = 0;
     mpu.set_acc_scale(BITS_FS_8G);
     while(zt < 5) {
@@ -224,6 +247,7 @@ if(controlLoopActive) {
   }
 }
 
+//Three functions down here are used for angular messurements
 void updateAngle() {
   updateMPU9250();
 
@@ -275,5 +299,10 @@ void updatePitchRoll() {
   roll = atan(accY / sqrt(accX * accX + accZ * accZ)) * RAD_TO_DEG;
   pitch = atan2(-accX, accZ) * RAD_TO_DEG;
 #endif
+}
+
+void blinkerFunction() {
+  onOrOff = !onOrOff;
+  digitalWriteFast(LED, onOrOff);
 }
 

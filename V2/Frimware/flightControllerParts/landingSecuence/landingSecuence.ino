@@ -205,6 +205,7 @@ void controlMotors() {
 
   void landingSecuence() {
     regler.write(30);
+    controlLoopActive = false;
     zAccPeak();
     regler.write(0);
     servo.write(90);
