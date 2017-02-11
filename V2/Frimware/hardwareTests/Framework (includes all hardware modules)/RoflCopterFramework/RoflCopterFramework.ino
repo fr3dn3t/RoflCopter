@@ -241,7 +241,7 @@ void killAll() {
     HWSERIAL.println("KILL");
     regler.write(10);
     delay(30);
-    //cli();
+    cli();
     //servo.write(90);
     digitalWriteFast(LED, LOW);
     while(1);
