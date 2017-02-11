@@ -43,6 +43,7 @@
     //Timer for the servo
       IntervalTimer servoTimer;
       IntervalTimer blinker;
+      IntervalTimer killCheck;
   //IMU instance
     MPU9250 mpu(SPI_CLOCK, SS_PIN, BITS_DLPF_CFG_256HZ_NOLPF2, BITS_DLPF_CFG_256HZ_NOLPF2);
   //Kalman instance
@@ -60,6 +61,7 @@
     //indicates if the data in the channel value array are reliable e.g. there have been two sync breaks, so in the array there are only "real" values synced to the correspondinc channel number
       volatile uint8_t firstRoundCounter = 2;
       volatile boolean firstRoundPassed = false;
+      volatile boolean validRxValues = false;
   //IMU Data  
     //variables for raw values
       int accX, accY, accZ;
@@ -100,7 +102,11 @@
         rxPre = micros();
         channelNr++;
       } 
-      //if((rxData[killSwRx] < 1000) && firstRoundPassed) killAll();  ------------reactivate for practical use!!!!!!!!
+      if(!validRxValues) {
+        if(firstRoundPassed) {
+           if((rxData[liftRx] < 1000) && (rxData[killSwRx] != rxData[pitchRx])) validRxValues = true;
+        }
+      }
     }
     
 void setup() {
@@ -114,7 +120,7 @@ void setup() {
   //initialise pins
     //inputs
       pinMode(INT_PIN, INPUT);
-      pinMode(rx,INPUT);
+      pinMode(rx,INPUT_PULLUP);
       pinMode(ir, INPUT);
   
     //outputs
@@ -138,7 +144,38 @@ void setup() {
     SPI.setMISO(8);
     SPI.setSCK(14);
     SPI.begin();
+
+  //waiting for hwserial respond
+    int c = 0;
+    while(!(HWSERIAL.available() > 0)) {
+      if(c == 10) {
+        HWSERIAL.println("waiting for connection. Please respond...");
+        c = 0;
+      }
+      c++;
+      delay(100);
+    }
+    HWSERIAL.clear();
+    HWSERIAL.println("connection established.");
+    HWSERIAL.println("--------------------------------");
+
+  //activate RX interrupt
+    HWSERIAL.print("activating Taranis RX...");
+    attachInterrupt(digitalPinToInterrupt(rx), rxFALLING, FALLING);
+    HWSERIAL.println("DONE");
+      
+  //waiting for RX
+    HWSERIAL.print("Waiting for transmitter connection...");
+    while(!validRxValues) {
+      //nothing to do here
+    }
+    HWSERIAL.println("DONE");
+  //activating kill switch
+    killCheck.priority(150);
+    killCheck.begin(killAll, 200000);
+  
   //initialise IMU
+    HWSERIAL.print("Initialising IMU...");
     mpu.init(true);
 
     uint8_t wai = mpu.whoami();
@@ -152,30 +189,34 @@ void setup() {
           delay(500);
         }
       }
-
+    HWSERIAL.println("DONE");
+    HWSERIAL.print("calibrating Acc...");
     mpu.calib_acc();
+    HWSERIAL.println("DONE");
     
   //interrupts
-    //rx
-      attachInterrupt(digitalPinToInterrupt(rx), rxFALLING, FALLING);
+    HWSERIAL.print("Activiating IR...");
     //ir
       attachInterrupt(digitalPinToInterrupt(ir), IRFalling, FALLING);
+    HWSERIAL.println("DONE");
 
-  //waiting for hwserial respond
-  while(!(HWSERIAL.available() > 0)) {
-    //wait
-  }
-  HWSERIAL.clear();
-  HWSERIAL.println("Ready when you are! Spin!");
+  //safety check
+    HWSERIAL.println("Be sure that the motors, flaps and servos are clear! Respong to start the engine.");
+    while(!(HWSERIAL.available() > 0)) {
+      //nothing to do here
+    }
+    HWSERIAL.clear();
+
+  //engine start
+    HWSERIAL.println("Ready when you are! Spin!");
+    regler.write(50);
   
   //wait for start spin
     blinker.end();
     blinker.begin(blinkerFunction, 200000);
     waitForStartSpin(); //----------reactivate for practical use!!!!!!
-
-  int m = micros();
-    HWSERIAL.println("Lift off!");
-    HWSERIAL.println(micros() - m);
+    regler.write(map(rxData[throttleRx], 990, 2000, 70, 180));
+    HWSERIAL.println("See you!");
     /* Set Kalman and gyro starting angle */
   updateMPU9250();
   updatePitchRoll();
@@ -190,15 +231,20 @@ void setup() {
 }
 
 void loop() {
-  
+  if(rxData[killSwRx] > 1800 && validRxValues) killAll();
+  regler.write(map(rxData[throttleRx], 990, 2000, 70, 180));
+  delay(50);
 }
 
 void killAll() {
-  cli();
-  regler.write(0);
-  //servo.write(90);
-  digitalWriteFast(LED, LOW);
-  while(1);
+  if(rxData[killSwRx] > 1800 && validRxValues) {
+    HWSERIAL.println("KILL");
+    regler.write(0);
+    cli();
+    //servo.write(90);
+    digitalWriteFast(LED, LOW);
+    while(1);
+  }
 }
 
 void controlMotors() {
@@ -212,7 +258,7 @@ void controlMotors() {
 }
 
 void controlServos() {
-  if(firstRoundPassed && userLiftControlActive) {
+  if(validRxValues && userLiftControlActive) {
     servo.write(map(rxData[liftRx], 990, 2010, 83, 97));
   }
 }
