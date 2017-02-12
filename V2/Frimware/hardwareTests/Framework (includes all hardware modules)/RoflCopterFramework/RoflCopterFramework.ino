@@ -209,7 +209,7 @@ void setup() {
 
   //engine start
     HWSERIAL.println("Ready when you are! Spin!");
-    regler.write(50);
+    regler.write(90);
   
   //wait for start spin
     blinker.end();
@@ -260,7 +260,7 @@ void controlMotors() {
 
 void controlServos() {
   if(validRxValues && userLiftControlActive) {
-    servo.write(map(rxData[liftRx], 990, 2010, 83, 97));
+    servo.write(map(rxData[liftRx], 990, 2010, 80, 100));
   }
 }
 
