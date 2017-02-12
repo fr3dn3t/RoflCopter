@@ -82,11 +82,31 @@
   //blinker
     volatile boolean onOrOff = false;
     int blinkInterval = 400000;//in us
+  //IR
+    int recieveTollerance = 3000; //tollerance time in us; min. 810
+    volatile unsigned int irTimer = 0;
+    volatile boolean on = false;
+  //rpm calculation
+    double lastTurnTimestamp = 0.00;
+    double diffTime;
+    double rotTime;
+  //Debug Buffer
+    String debugBuffer = "DEBUG START: ";
   
 //interrupt functions
   //IR
     void IRFalling() {
-      startNextRound = true;
+      if(!on) {
+        startNextRound = true;
+        //calc rpm
+          diffTime = micros()-lastTurnTimestamp;
+          lastTurnTimestamp = micros();
+          rotTime=60*(1000000/diffTime);//(String)60*(1/(diffTime/1000000));
+          debugBuffer += "\n"+(String)rotTime+",";
+        //control loop to be started here...
+      }
+      irTimer = micros()+recieveTollerance;//offset the timer 3000us
+      on=true;//indicate that something has been recieved
     }
     
   //PPM
@@ -231,8 +251,26 @@ void setup() {
 }
 
 void loop() {
-  if(rxData[killSwRx] > 1800 && validRxValues) killAll();
-  regler.write(map(rxData[throttleRx], 990, 2000, 70, 180));
+  //check for kill signal
+    if(rxData[killSwRx] > 1800 && validRxValues) killAll();
+
+  //adjust the motor speed
+    regler.write(map(rxData[throttleRx], 990, 2000, 70, 180));
+
+  //IR foo
+    //Wenn die Zeit größer als der gewünschte Zeitstempel ist
+    if((micros() >= irTimer)&& (irTimer != 0)) { //irTimer = 0 = disabled
+     on=false;
+     irTimer = 0;
+    }
+    
+    if(on) {//Wenn Signal empfangen
+      digitalWrite(led, HIGH);
+    }
+    else {
+      digitalWrite(led, LOW);
+    }
+  
   delay(50);
 }
 
@@ -244,6 +282,7 @@ void killAll() {
     cli();
     //servo.write(90);
     digitalWriteFast(LED, LOW);
+    HWSERIAL.println(debugBuffer);
     while(1);
   }
 }
