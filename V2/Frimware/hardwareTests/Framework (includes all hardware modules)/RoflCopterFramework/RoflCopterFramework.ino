@@ -92,11 +92,13 @@
     double rotTime;
   //Debug Buffer
     String debugBuffer = "DEBUG START: ";
+  //stat indicator  
+    volatile boolean spinOff = false;
   
 //interrupt functions
   //IR
     void IRFalling() {
-      if(!on) {
+      if(!on && spinOff) {
         startNextRound = true;
         //calc rpm
           diffTime = micros()-lastTurnTimestamp;
@@ -104,6 +106,7 @@
           rotTime=60*(1000000/diffTime);//(String)60*(1/(diffTime/1000000));
           debugBuffer += "\n"+(String)rotTime+",";
         //control loop to be started here...
+        updateAngle();
       }
       irTimer = micros()+recieveTollerance;//offset the timer 3000us
       on=true;//indicate that something has been recieved
@@ -255,7 +258,7 @@ void loop() {
     if(rxData[killSwRx] > 1800 && validRxValues) killAll();
 
   //adjust the motor speed
-    regler.write(map(rxData[throttleRx], 990, 2000, 70, 180));
+    regler.write(map(rxData[throttleRx], 990, 2000, 30, 180));
 
   //IR foo
     //Wenn die Zeit größer als der gewünschte Zeitstempel ist
@@ -265,10 +268,10 @@ void loop() {
     }
     
     if(on) {//Wenn Signal empfangen
-      digitalWrite(led, HIGH);
+      digitalWrite(LED, HIGH);
     }
     else {
-      digitalWrite(led, LOW);
+      digitalWrite(LED, LOW);
     }
   
   delay(50);
@@ -313,6 +316,7 @@ void controlServos() {
     }
     blinker.end();
     digitalWriteFast(LED, HIGH);
+    spinOff = true;
     mpu.set_gyro_scale(BITS_FS_250DPS);
   }
   
@@ -361,6 +365,8 @@ void updateAngle() {
     gyroXangle = kalAngleX;
   if (gyroYangle < -180 || gyroYangle > 180)
     gyroYangle = kalAngleY;
+
+  debugBuffer += (String)kalAngleX+","+(String)kalAngleY;
 }
 
 void updateMPU9250() {
