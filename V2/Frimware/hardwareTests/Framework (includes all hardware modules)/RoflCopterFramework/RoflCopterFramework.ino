@@ -104,7 +104,7 @@
           diffTime = micros()-lastTurnTimestamp;
           lastTurnTimestamp = micros();
           rotTime=60*(1000000/diffTime);//(String)60*(1/(diffTime/1000000));
-          debugBuffer += "\n"+(String)rotTime+",";
+          debugBuffer += "\n"+(String)diffTime+","+(String)rotTime+",";
         //control loop to be started here...
         updateAngle();
       }
