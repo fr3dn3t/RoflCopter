@@ -1,4 +1,4 @@
-void drawAxisX() {
+void drawAxisX(boolean back) {
 
   /* Draw kalman filter x-axis */
   noFill();
@@ -11,16 +11,17 @@ void drawAxisX() {
       endShape();
       beginShape();
     }
-    vertex(i, kalmanX[i]);
+    vertex(i*(width/kalmanX.length), kalmanX[i]);
   }
   endShape();
-
-  // Put all data one array back
-  for (int i = 1; i < kalmanX.length; i++)
-    kalmanX[i-1] = kalmanX[i];
+  if(back) {
+    // Put all data one array back
+    for (int i = 1; i < kalmanX.length; i++)
+      kalmanX[i-1] = kalmanX[i];
+  }
 }
 
-void drawAxisY() {
+void drawAxisY(boolean back) {
 
   /* Draw kalman filter y-axis */
   noFill();
@@ -33,11 +34,12 @@ void drawAxisY() {
       endShape();
       beginShape();
     }
-    vertex(i, kalmanY[i]);
+    vertex(i*(width/kalmanY.length), kalmanY[i]);
   }
   endShape();
-
-  // Put all data one array back
-  for (int i = 1; i<kalmanY.length;i++)
-    kalmanY[i-1] = kalmanY[i];
+  if(back) {
+    // Put all data one array back
+    for (int i = 1; i<kalmanY.length;i++)
+      kalmanY[i-1] = kalmanY[i];
+  }
 }
