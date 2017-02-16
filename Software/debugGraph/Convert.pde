@@ -1,6 +1,6 @@
 //convert all axis
-final int minAngle = -90;
-final int maxAngle = 90;
+final int minAngle = 90;
+final int maxAngle = -90;
 
 void convert() {
    /* Convert the kalman filter x-axis */

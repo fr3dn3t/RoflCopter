@@ -11,7 +11,7 @@ void drawAxisX(boolean back) {
       endShape();
       beginShape();
     }
-    vertex(i*(width/kalmanX.length), kalmanX[i]);
+    vertex((i)*(width/(kalmanX.length-2)), kalmanX[i]);
   }
   endShape();
   if(back) {
@@ -34,7 +34,7 @@ void drawAxisY(boolean back) {
       endShape();
       beginShape();
     }
-    vertex(i*(width/kalmanY.length), kalmanY[i]);
+    vertex((i)*(width/(kalmanY.length-2)), kalmanY[i]);
   }
   endShape();
   if(back) {

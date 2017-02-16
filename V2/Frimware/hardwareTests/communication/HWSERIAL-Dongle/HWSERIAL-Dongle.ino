@@ -6,7 +6,8 @@ void setup() {
   Serial.begin(115200);
   HWSERIAL.begin(9600);
   delay(1000);
-  HWSERIAL.write("AT+ROLE1");
+  //HWSERIAL.println("AT+BAUD0");
+  //delay(1000);
 }
 
 void loop() {
@@ -16,4 +17,7 @@ void loop() {
     
     if (Serial.available())
       HWSERIAL.write(Serial.read());
+
+  // HWSERIAL.println("TEST");
+      
 }
