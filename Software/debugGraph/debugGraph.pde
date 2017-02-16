@@ -1,11 +1,11 @@
-String stringKalmanX, stringKalmanY;
+String stringKalmanX, stringKalmanY, stringRPM;
 
 final int width = 1280;
 final int height = 800;
 
 float[] kalmanX;
 float[] kalmanY;
-int[] rpm;
+float[] rpm;
 
 float angleX = 0.00, angleY = 0.00;
 
@@ -33,10 +33,11 @@ void setup() {
 
   kalmanX = new float[numberOfData];
   kalmanY = new float[numberOfData];
-  rpm = new int[numberOfData];
+  rpm = new float[numberOfData];
   for (int i = 0; i < numberOfData; i++) { // center all variables
     kalmanX[i] = height/2;
     kalmanY[i] = height/2;
+    rpm[i] = height/2;
   }
 
   ellipseMode(CENTER);
@@ -57,13 +58,14 @@ void draw() {
   
   fill(150,150,150);
   textSize(20);
-  text("currentValue", 10, 30); 
+  text("currentCount", 10, 30); 
   text(currentValue, 140, 30); 
   text("angleX", 10, 60); 
-  text(table.getInt(currentValue+1, 0), 140, 60); 
+  text(table.getInt(currentValue+1, 2), 140, 60); 
   text("angleY", 10, 90); 
-  text(table.getInt(currentValue+1, 1), 140, 90); 
-  
+  text(table.getInt(currentValue+1, 3), 140, 90); 
+  text("RPM", 10, 120); 
+  text(table.getInt(currentValue+1, 1), 140, 120); 
 
   stroke(80, 80, 80);// Red
   line(currentValue*(width/(kalmanX.length-2)),height/2,currentValue*(width/(kalmanX.length-2)),height);
@@ -74,19 +76,17 @@ void draw() {
   
   translate(width/2, height/4, 0);
   //if(currentValue != 0) {
-    rotateX(table.getInt(currentValue+1, 0));
-    rotateZ(table.getInt(currentValue+1, 1));
+    rotateX(table.getInt(currentValue+1, 2));
+    rotateZ(table.getInt(currentValue+1, 3));
  // }
  
   //directionalLight(204, 204, 204, width/2, height/2, 20);
-  fill(255,255,255);
+  fill(100,100,100);
   stroke(0); 
   box(150, 150, 150);
   beginShape(QUADS);
-  fill(200,200,200);
   vertex(-75, -75, -75);
   vertex( 75, -75, -75);
-  fill(200,20,20);
   vertex( 75, -75,  75);
   vertex(-75, -75,  75);
   endShape(); 
@@ -110,21 +110,23 @@ void drawGraph() {
     //translate(width/2, height/1.5, 0);
     drawAxisX(true);
     drawAxisY(true);
+    drawAxisRPM(true);
   }
   else {
     drawAxisX(false);
     drawAxisY(false);
+    drawAxisRPM(false);
   }
   
 }
 
 void readTable() {
   for (TableRow row : table.rows()) {
-      angleX = row.getFloat(0);
-      stringKalmanX = row.getString(0);
-      angleY = row.getFloat(1);
-      stringKalmanY = row.getString(1);
-      println(angleX + "-" + angleY);
+      angleX = row.getFloat(2);
+      stringKalmanX = row.getString(2);
+      angleY = row.getFloat(3);
+      stringKalmanY = row.getString(3);
+      stringRPM = row.getString(1);
       drawGraph();
   }
   

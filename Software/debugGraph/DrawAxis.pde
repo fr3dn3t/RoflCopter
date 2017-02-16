@@ -43,3 +43,26 @@ void drawAxisY(boolean back) {
       kalmanY[i-1] = kalmanY[i];
   }
 }
+
+void drawAxisRPM(boolean back) {
+
+  /* Draw kalman filter y-axis */
+  noFill();
+  stroke(0, 200, 0); // Black
+  // Redraw everything
+  beginShape();
+  vertex(0, rpm[0]);
+  for (int i = 1; i < rpm.length; i++) {
+    if ((rpm[i] < height/4 && rpm[i - 1] > height/4*3) || (rpm[i] > height/4*3 && rpm[i - 1] < height/4)) {
+      endShape();
+      beginShape();
+    }
+    vertex((i)*(width/(rpm.length-2)), rpm[i]);
+  }
+  endShape();
+  if(back) {
+    // Put all data one array back
+    for (int i = 1; i<rpm.length;i++)
+      rpm[i-1] = rpm[i];
+  }
+}

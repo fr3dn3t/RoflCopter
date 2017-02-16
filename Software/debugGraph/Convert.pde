@@ -2,6 +2,9 @@
 final int minAngle = 90;
 final int maxAngle = -90;
 
+final int minRPM = 1200;
+final int maxRPM = 0;
+
 void convert() {
    /* Convert the kalman filter x-axis */
   if ((stringKalmanX != null) && (stringKalmanX != "NaN")) {
@@ -24,6 +27,18 @@ void convert() {
     }
     else if(kalmanY[kalmanY.length - 1] < height/2) {
       kalmanY[kalmanY.length - 1] = height/2;
+    }
+  }
+  
+  /* Convert the rpm */
+  if ((stringRPM != null) && (stringRPM != "NaN")) {
+    stringRPM = trim(stringRPM); // Trim off any whitespace
+    rpm[rpm.length - 1] = map(float(stringRPM), minRPM, maxRPM, height/2, height); // Convert to a float and map to the screen height, then save in buffer
+    if(rpm[rpm.length - 1] > height)  {
+      rpm[rpm.length - 1] = height;
+    }
+    else if(rpm[rpm.length - 1] < height/2) {
+      rpm[rpm.length - 1] = height/2;
     }
   }
 }

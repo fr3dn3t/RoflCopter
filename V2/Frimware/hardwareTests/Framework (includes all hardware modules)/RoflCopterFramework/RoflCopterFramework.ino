@@ -273,7 +273,6 @@ void loop() {
     else {
       digitalWrite(LED, LOW);
     }
-  
   delay(50);
 }
 
@@ -282,10 +281,12 @@ void killAll() {
     HWSERIAL.println("KILL");
     regler.write(10);
     delay(30);
-    cli();
+    //cli();
     //servo.write(90);
     digitalWriteFast(LED, LOW);
+    while(rxData[safetySwRx] > 1000) {}
     HWSERIAL.println(debugBuffer);
+    cli();
     while(1);
   }
 }
