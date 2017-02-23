@@ -42,7 +42,7 @@ void setup() {
   HWSERIAL.println("Ready when you are!");
   //auf stabilisierung der Werte warten
   regler.attach(18);
-  regler.write(0);
+  regler.write(90);
   delay(1000);
   
   

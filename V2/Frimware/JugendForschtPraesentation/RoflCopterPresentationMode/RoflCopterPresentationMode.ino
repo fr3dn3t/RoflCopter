@@ -35,7 +35,7 @@
   #define throttleRx    3
   #define safetySwRx    4
   #define killSwRx      5
-  #define nextSw        6
+  #define nextSwRx        6
 
 //instances
   //Servo instance                         
@@ -96,7 +96,7 @@
   //stat indicator  
     volatile boolean spinOff = false;
   //prese
-    irPre = false;
+    boolean irPre = false;
   
 //interrupt functions
   //IR
@@ -127,7 +127,6 @@
 void setup() {
   blinker.priority(255);
   blinker.begin(blinkerFunction, blinkInterval);
-  delay(2000);
   //start serial for debugging purposes
     Serial.begin(115200);
     HWSERIAL.begin(9600);
@@ -159,7 +158,7 @@ void setup() {
     SPI.setMISO(8);
     SPI.setSCK(14);
     SPI.begin();
-
+    
   //waiting for hwserial respond
     int c = 0;
     while(!(HWSERIAL.available() > 0)) {
@@ -188,7 +187,7 @@ void setup() {
   //activating kill switch
     killCheck.priority(150);
     killCheck.begin(killAll, 200000);
-  
+  while(rxData[nextSwRx]<1900) {}
   //initialise IMU
     HWSERIAL.print("Initialising IMU...");
     mpu.init(true);
@@ -205,12 +204,15 @@ void setup() {
         }
       }
     HWSERIAL.println("DONE");
+  
     HWSERIAL.print("calibrating Acc...");
+        while(rxData[nextSwRx]<1900) {}
     mpu.calib_acc();
     HWSERIAL.println("DONE");
     
   //interrupts
     HWSERIAL.print("Activiating IR...");
+        while(rxData[nextSwRx]<1900) {}
     //ir
       attachInterrupt(digitalPinToInterrupt(ir), IRFalling, FALLING);
     HWSERIAL.println("DONE");
@@ -226,10 +228,55 @@ void setup() {
   gyroYangle = pitch;
 
   timer = micros(); // Initialize the timer
+
+  //MOTOR
+  delay(1000);
+  HWSERIAL.println("Motor!!");
+ while(rxData[nextSwRx]<1900) {}
+ delay(1000);
+        while(rxData[nextSwRx]<1900) {
+  regler.write(60);
+        }
+regler.write(0);
+
+   //flaps
+   HWSERIAL.println("Flaps");
+   delay(1000);
+   while(rxData[nextSwRx]<1900) {}
+ delay(1000);
+    while(rxData[nextSwRx]<1900) {
+      digitalWriteFast(flap0, HIGH);
+    delay(15);
+    digitalWriteFast(flap0, LOW);
+    delay(700);
+      }
+      delay(1000);
+      while(rxData[nextSwRx]<1900) {
+      digitalWriteFast(flap0, HIGH);
+    delay(10);
+    digitalWriteFast(flap0, LOW);
+    delay(15);
+      }
+   //spinOff
+   HWSERIAL.println("SpinOff");
+   delay(1000);
+   digitalWriteFast(LED, LOW);
+    while(rxData[nextSwRx]<1900) {}
+    waitForStartSpin();
+    delay(1000);
+   while(rxData[nextSwRx]<1900) {}
+   //touchdown
+   HWSERIAL.println("touchdown");
+   digitalWriteFast(LED, LOW);
+   delay(1000);
+   while(rxData[nextSwRx]<1900) {}
+    zAccPeak();
 }
 
 void loop() {
-  
+    
+    
+
 }
 
 void killAll() {
@@ -273,7 +320,6 @@ void controlServos() {
     }
     blinker.end();
     digitalWriteFast(LED, HIGH);
-    spinOff = true;
     mpu.set_gyro_scale(BITS_FS_250DPS);
   }
   
@@ -284,7 +330,7 @@ void controlServos() {
       mpu.read_acc();
       zt = mpu.accel_data[2]/4096;
     }
-    digitalWriteFast(LED, LOW);
+    digitalWriteFast(LED, HIGH);
     mpu.set_acc_scale(BITS_FS_2G);
   }
 
