@@ -29,12 +29,13 @@
     #define escPin   18
 
 //rx channels
-  #define liftRx        0
-  #define rollRx        1
-  #define pitchRx       2
-  #define throttleRx    3
-  #define safetySwRx    4
-  #define killSwRx      5
+  #define liftRx          0
+  #define rollRx          1
+  #define pitchRx         2
+  #define throttleRx      3
+  #define safetySwRx      4
+  #define killSwRx        5
+  #define controlFactorRx 7
 
 //instances
   //Servo instance                         
@@ -97,6 +98,12 @@
     String debugBuffer = "DEBUG START: ";
   //stat indicator  
     volatile boolean spinOff = false;
+  //flapControl
+    boolean rotor0first;
+    int angleToFlap;
+    int angleFlapOn;
+    int timeToFlap;
+    int timeFlapOn;
   
 //interrupt functions
   //IR
@@ -108,7 +115,6 @@
           lastTurnTimestamp = micros();
           rotTime=60*(1000000/diffTime);//(String)60*(1/(diffTime/1000000));
           debugBuffer += "\n"+(String)diffTime+","+(String)rotTime+",";
-        //control loop to be started here...
         updateAngle();
       }
       irTimer = micros()+recieveTollerance;//offset the timer 3000us
@@ -260,6 +266,16 @@ void loop() {
   //check for kill signal
     if(rxData[killSwRx] > 1800 && validRxValues) killAll();
 
+  //fi its the first time ir wasrecieved after break
+  if(startNextRound) {
+    startNextRound = false;
+    //if rpm vvalues are valid
+    if(rotTime > 550 && rotTime < 950) {
+      //start control loop
+      controlLoop();
+    }
+  }
+  
   //adjust the motor speed
     regler.write(map(rxData[throttleRx], 990, 2000, 30, 180));
 
@@ -278,6 +294,33 @@ void loop() {
     }
   delay(50);
 }
+
+//main control loop to calculate the falp movements
+void controlLoop() {
+  transformCoordiantes();
+  int area = calculateFlapArea();
+  //only control the flaps when the control area is big enough
+  if(area > 30) {
+    //calculate the point where the flap has to be turned on
+      calculateFlapOnPoint(area);
+    //calculate which flap (blade) has to control the flap
+      chooseClosestBlade();
+    //calculate the time when the flap has to be turned on and how long
+      angleToTime(area);
+   
+    HWSERIAL.print(rotTime);
+    HWSERIAL.print(", ");
+    HWSERIAL.print(rotor0first);
+    HWSERIAL.print(", ");
+    HWSERIAL.print(timeToFlap);
+    HWSERIAL.print(", ");
+    HWSERIAL.println(timeFlapOn);
+    
+    //set the hardwaretimers
+     // setTimers();
+  }
+}
+
 
 void killAll() {
   if(rxData[killSwRx] > 1800 && validRxValues) {
@@ -323,7 +366,94 @@ void transformCoordiantes() {//calculates the point where the flaps have to be a
     flapPoint[1] = rollPitchPoint[0];
 }
 
+int calculateFlapArea() {
+  //read and map control faactor
+    int factor = map(rxData[controlFactorRx], 990, 2010, 0, 20);
+  //calculate P factor = norm(flapVector / 56) --> maximum is X040 and 
+    float p = sqrt(flapPoint[0]*flapPoint[0]+flapPoint[1]*flapPoint[1])/56;
+  //calculate the final angle in where the flap is on
+  //           (control Factor)   (°)  (P factor)
+    return round((1+(factor/20)) * 90 * p);
+}
 
+void calculateFlapOnPoint(int pAngle) {
+  //since flap point in in the center of the area, on point is half of the area before it
+    int halfAngle = round(pAngle/2);
+  
+  //calculate the points using a rotation matrix
+    int tmpX = cos(halfAngle)*flapPoint[0]-sin(halfAngle)*flapPoint[1];
+    int tmpY = sin(halfAngle)*flapPoint[0]+cos(halfAngle)*flapPoint[1];
+
+  //save them in the array
+    flapPoint[0] = tmpX;
+    flapPoint[1] = tmpY;
+}
+
+
+void chooseClosestBlade() {
+  float skalarprodukt = flapPoint[0]; //refVektor[0]*diffVektor[0]+refVektor[1]*diffVektor[1] = 1*diffVektor[0]+0*diffVektor[1] = diffVektor[0]
+  float cosP;
+  float norm = sqrt(flapPoint[0]*flapPoint[0]+flapPoint[1]*flapPoint[1]);
+  //Berrechnungen für die einzelnen Quadranten
+    //oberhalb der X-Achse bei Y>0
+      if(flapPoint[1] > 0) { 
+        rotor0first = true; //oberhalb der X Achse kann nur der R0 der erste Rotor sein, der die Klappe anstellen muss
+          if(flapPoint[0] > 0) {
+            //1. Quadrant --> stumpfer Winkel für R0
+              cosP = cosPStumpf(skalarprodukt, norm);
+          }
+          else if(flapPoint[0] < 0) {
+            //2. Quadrant --> spitzer Winkel für R0
+              cosP = cosPSpitz(skalarprodukt, norm);
+          }
+          else {
+            //X=0 --> Winkel von 90° für R0
+              cosP=0;
+          }
+      }
+
+    //unterhalb der X-Achse bei Y < 0
+      else if(flapPoint[1] < 0) { 
+        rotor0first = false;
+          if(flapPoint[0] < 0) {
+            //3. Quadrant --> stumpfer Wikel für R1
+              cosP = cosPStumpf(skalarprodukt, norm);
+          }
+          else if(flapPoint[0] > 0) {
+            //4. Quadrant --> spitzer Winkel für R1
+              cosP = cosPSpitz(skalarprodukt, norm);
+          }
+          else {
+            //X=0 --> Winkel von 90° für R1
+              cosP=0;
+          }
+      }
+
+    //Auf der X-Achse bei Y = 0
+      else {
+        if(flapPoint[0] > 0) {
+          //Achse zwischen 1 und 4 Quadranten --> R0 anstellen, da R1 bereits auf dieser Position ist
+            cosP = -1; //180°
+            rotor0first = true;
+        }
+        else if(flapPoint[0] < 0) {
+          //Achse zwischen 2 und 3 Quadranten --> R1 anstellen, da R0 bereits auf dieser Position ist
+            cosP = -1; //180°
+            rotor0first = false;
+        }
+        else {
+          //Vektor zeigt auf (0|0) --> nichts tun
+          //skipThisRound = true;
+        }
+      }
+  angleToFlap = round(acos(cosP));
+}
+
+void angleToTime(int pAngle) {
+  //Zeiten berrechnen
+      timeToFlap = diffTime/(360*angleToFlap);
+      timeFlapOn = diffTime/(360*pAngle);
+}
 
 //Start and Landing foo
   void waitForStartSpin() {
@@ -349,12 +479,6 @@ void transformCoordiantes() {//calculates the point where the flaps have to be a
     digitalWriteFast(LED, LOW);
     mpu.set_acc_scale(BITS_FS_2G);
   }
-
-void controlLoop() {
-if(controlLoopActive) { 
-    //the control Process will be here soon
-  }
-}
 
 //Three functions down here are used for angular messurements
 void updateAngle() {
@@ -416,4 +540,15 @@ void blinkerFunction() {
   onOrOff = !onOrOff;
   digitalWriteFast(LED, onOrOff);
 }
+
+//Funktionen für die Winkelwahl
+  double cosPSpitz(double pSkalarprodukt, double pDiffVektorLaenge) {
+    double result = sqrt(pSkalarprodukt*pSkalarprodukt)/pDiffVektorLaenge; //refVektorLaenge*diffVektorLaenge = 1*diffVektorLaenge
+    return result;
+  }
+  
+  double cosPStumpf(double pSkalarprodukt, double pDiffVektorLaenge) {
+    double result = pSkalarprodukt/pDiffVektorLaenge; //refVektorLaenge*diffVektorLaenge = 1*diffVektorLaenge
+    return result;
+  }
 

@@ -243,21 +243,24 @@ regler.write(0);
    HWSERIAL.println("Flaps");
    delay(1000);
    while(rxData[nextSwRx]<1900) {}
- delay(1000);
+   blinker.end();
+    delay(1000);
     while(rxData[nextSwRx]<1900) {
-      digitalWriteFast(flap0, HIGH);
+      digitalWriteFast(flap1, HIGH);
     delay(15);
-    digitalWriteFast(flap0, LOW);
+    digitalWriteFast(flap1, LOW);
     delay(700);
       }
+      
       delay(1000);
       while(rxData[nextSwRx]<1900) {
-      digitalWriteFast(flap0, HIGH);
-    delay(10);
-    digitalWriteFast(flap0, LOW);
+      digitalWriteFast(flap1, HIGH);
+    delay(4);
+    digitalWriteFast(flap1, LOW);
     delay(15);
       }
    //spinOff
+    digitalWriteFast(LED, HIGH);
    HWSERIAL.println("SpinOff");
    delay(1000);
    digitalWriteFast(LED, LOW);
