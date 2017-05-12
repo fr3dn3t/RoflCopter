@@ -92,14 +92,14 @@
     volatile unsigned int irTimer = 0;
     volatile boolean on = false;
   //rpm calculation
-    double lastTurnTimestamp = 0.00;
-    double diffTime;
+    uint16_t lastTurnTimestamp = 0.00;
+    uint16_t diffTime;
     double rotTime;
   //Debug Buffer
     String debugBuffer = "DEBUG START: ";
   //stat indicator  
     volatile boolean spinOff = false;
-    volatile int16_t startTimestamp; //the value of millis() at spin off will be stored here to have a time reference in the debug logs
+    elapsedMillis startTimestamp; //the value of millis() at spin off will be stored here to have a time reference in the debug logs
   //flapControl
     boolean rotor0first;
     int angleToFlap;
@@ -116,8 +116,7 @@
           diffTime = micros()-lastTurnTimestamp;
           lastTurnTimestamp = micros();
           rotTime=60*(1000000/diffTime);//(String)60*(1/(diffTime/1000000));
-          int timestamp = millis()-startTimestamp;
-          debugBuffer += "\n"+(String)timestamp+","+(String)diffTime+","+(String)rotTime+",";
+          debugBuffer += "\n--"+(String)startTimestamp+"--,"+(String)diffTime+","+(String)rotTime+","+(String)map(rxData[throttleRx], 990, 2000, 30, 180)+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
         updateAngle();
       }
       irTimer = micros()+recieveTollerance;//offset the timer 3000us
@@ -149,7 +148,7 @@ void setup() {
   blinker.begin(blinkerFunction, blinkInterval);
   delay(2000);
   //start serial for debugging purposes
-    WIREDSERIAL.begin(9600);
+    WIREDSERIAL.begin(4800);
     HWSERIAL.begin(9600);
   
   //initialise pins
@@ -252,8 +251,8 @@ void setup() {
     waitForStartSpin();
     
     //when start spin occured, store the value of millis() in the var to have a time reference in the debug log
-      startTimestamp = millis();
-      debugBuffer = "0, spin off";
+      startTimestamp = 0;
+      debugBuffer = "\n--0--, spin off";
 
     //full throttle for the motor - need to be controlled dynamically soon
     regler.write(map(rxData[throttleRx], 990, 2000, 70, 180));
