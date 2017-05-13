@@ -88,7 +88,7 @@
     volatile boolean onOrOff = false;
     int blinkInterval = 400000;//in us
   //IR
-    int recieveTollerance = 3000; //tollerance time in us; min. 810
+    int recieveTollerance = 5000; //tollerance time in us; min. 810
     volatile unsigned int irTimer = 0;
     volatile boolean on = false;
   //rpm calculation
@@ -99,13 +99,16 @@
     String debugBuffer = "DEBUG START: ";
   //stat indicator  
     volatile boolean spinOff = false;
-    elapsedMillis startTimestamp; //the value of millis() at spin off will be stored here to have a time reference in the debug logs
+    volatile uint16_t startTimestamp; //the value of millis() at spin off will be stored here to have a time reference in the debug logs
+    volatile uint16_t startDiff;
   //flapControl
     boolean rotor0first;
     int angleToFlap;
     int angleFlapOn;
     int timeToFlap;
     int timeFlapOn;
+  //motor control
+    uint16_t motorStartTimestamp;
   
 //interrupt functions
   //IR
@@ -116,7 +119,8 @@
           diffTime = micros()-lastTurnTimestamp;
           lastTurnTimestamp = micros();
           rotTime=60*(1000000/diffTime);//(String)60*(1/(diffTime/1000000));
-          debugBuffer += "\n--"+(String)startTimestamp+"--,"+(String)diffTime+","+(String)rotTime+","+(String)map(rxData[throttleRx], 990, 2000, 30, 180)+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
+          startDiff = millis()-startTimestamp;
+          debugBuffer += "\n--"+(String)startDiff+"--,"+(String)diffTime+","+(String)rotTime+","+(String)map(rxData[throttleRx], 990, 2000, 30, 180)+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
         updateAngle();
       }
       irTimer = micros()+recieveTollerance;//offset the timer 3000us
@@ -251,23 +255,25 @@ void setup() {
     waitForStartSpin();
     
     //when start spin occured, store the value of millis() in the var to have a time reference in the debug log
-      startTimestamp = 0;
+      startTimestamp = millis();
       debugBuffer = "\n--0--, spin off";
 
     //full throttle for the motor - need to be controlled dynamically soon
-    regler.write(map(rxData[throttleRx], 990, 2000, 70, 180));
-    HWSERIAL.println("See you!");
-    /* Set Kalman and gyro starting angle */
-  updateMPU9250();
-  updatePitchRoll();
-
-  kalmanX.setAngle(roll); // First set roll starting angle
-  gyroXangle = roll;
-
-  kalmanY.setAngle(pitch); // Then pitch
-  gyroYangle = pitch;
-
-  timer = micros(); // Initialize the timer
+      regler.write(180);
+      motorStartTimestamp = millis();
+      HWSERIAL.println("See you!");
+      
+  //Set Kalman and gyro starting angle
+    updateMPU9250();
+    updatePitchRoll();
+  
+    kalmanX.setAngle(roll); // First set roll starting angle
+    gyroXangle = roll;
+  
+    kalmanY.setAngle(pitch); // Then pitch
+    gyroYangle = pitch;
+  
+    timer = micros(); // Initialize the timer
 }
 
 void loop() {
@@ -285,7 +291,9 @@ void loop() {
   }
   
   //adjust the motor speed
-    regler.write(map(rxData[throttleRx], 990, 2000, 30, 180));
+  if(millis() - motorStartTimestamp > 4500) {
+    regler.write(135);//value from test flights
+  }
 
   //IR foo
     //Wenn die Zeit größer als der gewünschte Zeitstempel ist
