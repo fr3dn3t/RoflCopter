@@ -80,7 +80,7 @@
     boolean controlLoopActive = false;
     volatile boolean startNextRound = false;
   //lift control  
-    boolean userLiftControlActive = true;//set false for practical use; will be set to true by start secuence
+    boolean userLiftControlActive = true;//set false for practical use; will be set to true by start sequence
   //roll and pitch control
     int16_t rollPitchPoint[] = {0,0};
     int16_t flapPoint[] = {0,0};
@@ -88,7 +88,7 @@
     volatile boolean onOrOff = false;
     int blinkInterval = 400000;//in us
   //IR
-    int recieveTollerance = 5000; //tollerance time in us; min. 810
+    int recieveTollerance = 10000; //tollerance time in us; min. 810
     volatile unsigned int irTimer = 0;
     volatile boolean on = false;
   //rpm calculation
@@ -123,7 +123,7 @@
           debugBuffer += "\n--"+(String)startDiff+"--,"+(String)diffTime+","+(String)rotTime+","+(String)map(rxData[throttleRx], 990, 2000, 30, 180)+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
         updateAngle();
       }
-      irTimer = micros()+recieveTollerance;//offset the timer 3000us
+      irTimer = micros()+recieveTollerance;//offset the timer
       on=true;//indicate that something has been recieved
     }
     
@@ -176,7 +176,7 @@ void setup() {
     regler.write(0);
   //start the servo Timer
     servoTimer.priority(254);
-    servoTimer.begin(controlServos, 30000);
+    servoTimer.begin(controlServos, 31000);//31ms - prime number for less conflicts between timers
 
   //SPI for IMU
     SPI.setMISO(8);
@@ -210,7 +210,7 @@ void setup() {
     HWSERIAL.println("DONE");
   //activating kill switch
     killCheck.priority(150);
-    killCheck.begin(killAll, 200000);
+    killCheck.begin(killAll, 190000);//prime number for less conflicts between timers
   
   //initialise IMU
     HWSERIAL.print("Initialising IMU...");
@@ -278,22 +278,28 @@ void setup() {
 
 void loop() {
   //check for kill signal
-    if(rxData[killSwRx] > 1800 && validRxValues) killAll();
+    killAll();
 
   //if its the first time ir was recieved after break
   if(startNextRound) {
     startNextRound = false;
-    //if rpm vvalues are valid
-    if(rotTime > 550 && rotTime < 950) {
-      //start control loop
-      //controlLoop();
+    //if acceleration sequence finished
+    if(controlLoopActive) {
+      //if rpm values are valid
+      if(rotTime > 600 && rotTime < 950) {
+        //start control loop
+        //controlLoop();
+      }
     }
   }
   
   //adjust the motor speed
-  if(millis() - motorStartTimestamp > 4500) {
-    regler.write(135);//value from test flights
-  }
+    if(!controlLoopActive) {
+      if(rotTime >= 700) {
+        regler.write(140);//value from test flights
+        controlLoopActive = true;
+      }
+    }
 
   //IR foo
     //Wenn die Zeit größer als der gewünschte Zeitstempel ist
@@ -308,7 +314,12 @@ void loop() {
     else {
       digitalWrite(LED, LOW);
     }
-  delay(50);
+
+  //landing sequence
+    if(rxData[safetySwRx] < 1100) {
+      landingSequence();
+    }
+  delay(47);//prime number
 }
 
 void killAll() {
@@ -319,7 +330,7 @@ void killAll() {
     //cli();
     //servo.write(90);
     digitalWriteFast(LED, LOW);
-    while(rxData[safetySwRx] > 1000) {}
+    while(rxData[safetySwRx] > 1100) {}
     HWSERIAL.println(debugBuffer);
     WIREDSERIAL.println(debugBuffer);
     cli();
@@ -511,6 +522,14 @@ void controlServos() {
     mpu.set_acc_scale(BITS_FS_2G);
   }
 
+  void landingSequence() {
+    regler.write(80);
+    controlLoopActive = false;
+    spinOff = false;
+    zAccPeak();
+    regler.write(0);
+    servo.write(90); 
+  }
 //Three functions down here are used for angular messurements
 void updateAngle() {
   updateMPU9250();

@@ -204,7 +204,7 @@ void controlMotors() {
   }
 
   void landingSecuence() {
-    regler.write(30);
+    regler.write(80);
     controlLoopActive = false;
     zAccPeak();
     regler.write(0);
