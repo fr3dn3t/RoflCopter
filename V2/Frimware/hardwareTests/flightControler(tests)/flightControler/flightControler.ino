@@ -107,8 +107,6 @@
     int angleFlapOn;
     int timeToFlap;
     int timeFlapOn;
-  //motor control
-    uint16_t motorStartTimestamp;
   
 //interrupt functions
   //IR
@@ -260,7 +258,6 @@ void setup() {
 
     //full throttle for the motor - need to be controlled dynamically soon
       regler.write(180);
-      motorStartTimestamp = millis();
       HWSERIAL.println("See you!");
       
   //Set Kalman and gyro starting angle
@@ -316,7 +313,7 @@ void loop() {
     }
 
   //landing sequence
-    if(rxData[safetySwRx] < 1100) {
+    if(rxData[safetySwRx] > 1100) {
       landingSequence();
     }
   delay(47);//prime number
@@ -529,7 +526,9 @@ void controlServos() {
     zAccPeak();
     regler.write(0);
     servo.write(90); 
+    while(1);
   }
+  
 //Three functions down here are used for angular messurements
 void updateAngle() {
   updateMPU9250();
