@@ -94,7 +94,7 @@
   //rpm calculation
     uint16_t lastTurnTimestamp = 0.00;
     uint16_t diffTime;
-    double rotTime;
+    double rpm;
   //Debug Buffer
     String debugBuffer = "DEBUG START: ";
   //stat indicator  
@@ -107,6 +107,7 @@
     int angleFlapOn;
     int timeToFlap;
     int timeFlapOn;
+    int areaThreshold = 30;//threshold value (°); control will only take action, if the calculated area is greater than this value
   
 //interrupt functions
   //IR
@@ -116,9 +117,9 @@
         //calc rpm
           diffTime = micros()-lastTurnTimestamp;
           lastTurnTimestamp = micros();
-          rotTime=60*(1000000/diffTime);//(String)60*(1/(diffTime/1000000));
-          startDiff = millis()-startTimestamp;
-          debugBuffer += "\n--"+(String)startDiff+"--,"+(String)diffTime+","+(String)rotTime+","+(String)map(rxData[throttleRx], 990, 2000, 30, 180)+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
+          rpm=60*(1000000/diffTime);//(String)60*(1/(diffTime/1000000));
+          startDiff = millis()-startTimestamp;//time since start
+          debugBuffer += "\n"+(String)startDiff+","+(String)diffTime+","+(String)rpm+","+(String)map(rxData[throttleRx], 990, 2000, 30, 180)+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
         updateAngle();
       }
       irTimer = micros()+recieveTollerance;//offset the timer
@@ -147,7 +148,7 @@
     
 void setup() {
   blinker.priority(255);
-  blinker.begin(blinkerFunction, blinkInterval);
+  blinker.begin(blinkerFunction, blinkInterval);//indicate the program start by blinking
   delay(2000);
   //start serial for debugging purposes
     WIREDSERIAL.begin(4800);
@@ -236,6 +237,13 @@ void setup() {
       attachInterrupt(digitalPinToInterrupt(ir), IRFalling, FALLING);
     HWSERIAL.println("DONE");
 
+  //check landing switch
+    while(rxData[safetySwRx] > 1000) {
+      HWSERIAL.println("Please turn the landing switch off!");
+      delay(1500);
+    }
+    HWSERIAL.println("Landing switch is off");
+    
   //safety check
     HWSERIAL.println("Be sure that the motors, flaps and servos are clear! Respong to start the engine.");
     while(!(HWSERIAL.available() > 0)) {
@@ -256,7 +264,7 @@ void setup() {
       startTimestamp = millis();
       debugBuffer = "\n--0--, spin off";
 
-    //full throttle for the motor - need to be controlled dynamically soon
+    //full throttle for the motor - will be reduced automatically when target rpm is reached
       regler.write(180);
       HWSERIAL.println("See you!");
       
@@ -264,10 +272,10 @@ void setup() {
     updateMPU9250();
     updatePitchRoll();
   
-    kalmanX.setAngle(roll); // First set roll starting angle
+    kalmanX.setAngle(roll); //First set roll starting angle
     gyroXangle = roll;
   
-    kalmanY.setAngle(pitch); // Then pitch
+    kalmanY.setAngle(pitch); //Then pitch
     gyroYangle = pitch;
   
     timer = micros(); // Initialize the timer
@@ -283,24 +291,24 @@ void loop() {
     //if acceleration sequence finished
     if(controlLoopActive) {
       //if rpm values are valid
-      if(rotTime > 600 && rotTime < 950) {
+      if(rpm > 600 && rpm < 950) {
         //start control loop
-        //controlLoop();
+        controlLoop();//-------------------------------------------------------------reactivate for practical use
       }
     }
   }
   
   //adjust the motor speed
     if(!controlLoopActive) {
-      if(rotTime >= 700) {
-        regler.write(140);//value from test flights
+      if(rpm >= 700) {
+        regler.write(140);//reduce the motor's speed; value gathered from test flights
         controlLoopActive = true;
       }
     }
 
   //IR foo
-    //Wenn die Zeit größer als der gewünschte Zeitstempel ist
-    if((micros() >= irTimer)&& (irTimer != 0)) { //irTimer = 0 = disabled
+    //if the current timespamp is greater than the last buffered ir timestamp 
+    if((micros() >= irTimer)&& (irTimer != 0)) { //irTimer = 0 => disabled
      on=false;
      irTimer = 0;
     }
@@ -316,35 +324,37 @@ void loop() {
     if(rxData[safetySwRx] > 1100) {
       landingSequence();
     }
-  delay(47);//prime number
+  delay(47);//prime number to reduce timer conflicts
 }
 
 void killAll() {
   if(rxData[killSwRx] > 1800 && validRxValues) {
-    HWSERIAL.println("KILL");
-    regler.write(10);
+    regler.write(0);
     delay(30);
     //cli();
     //servo.write(90);
     digitalWriteFast(LED, LOW);
+    HWSERIAL.println("KILL");
     while(rxData[safetySwRx] > 1100) {}
-    HWSERIAL.println(debugBuffer);
-    WIREDSERIAL.println(debugBuffer);
+    //HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
+    WIREDSERIAL.println(debugBuffer);//send debug values to pc
     cli();
     while(1);
   }
 }
 
 //currently unused function
-void controlMotors() {
-  //Motor nur starten, wenn failsave switch off
-  if(rxData[4] < 1000) {
-    regler.write(map(rxData[throttleRx], 990, 2010, 0, 180));
+/*
+  void controlMotors() {
+    //Motor nur starten, wenn failsave switch off
+    if(rxData[4] < 1000) {
+      regler.write(map(rxData[throttleRx], 990, 2010, 0, 180));
+    }
+    else {
+      regler.write(0);
+    }
   }
-  else {
-    regler.write(0);
-  }
-}
+*/
 
 void controlServos() {
   if(validRxValues && userLiftControlActive) {
@@ -353,13 +363,14 @@ void controlServos() {
 }
 
 //control loop - need to be reviewed and rewritten 
-/*
+
   //main control loop to calculate the falp movements
   void controlLoop() {
     transformCoordiantes();
+        
     int area = calculateFlapArea();
     //only control the flaps when the control area is big enough
-    if(area > 30) {
+    if(area > areaThreshold) {
       //calculate the point where the flap has to be turned on
         calculateFlapOnPoint(area);
       //calculate which flap (blade) has to control the flap
@@ -367,14 +378,6 @@ void controlServos() {
       //calculate the time when the flap has to be turned on and how long
         angleToTime(area);
      
-      HWSERIAL.print(rotTime);
-      HWSERIAL.print(", ");
-      HWSERIAL.print(rotor0first);
-      HWSERIAL.print(", ");
-      HWSERIAL.print(timeToFlap);
-      HWSERIAL.print(", ");
-      HWSERIAL.println(timeFlapOn);
-      
       //set the hardwaretimers
        // setTimers();
     }
@@ -384,33 +387,45 @@ void controlServos() {
     //basic read out of the RX values an transformation into points on a coordiante system
       rollPitchPoint[0] = map(rxData[rollRx], 990, 2010, -40, 40);
       rollPitchPoint[1] = map(rxData[pitchRx], 990, 2010, -40, 40);
-  
+
+        debugBuffer += (String)rollPitchPoint[0]+","+(String)rollPitchPoint[1]+",";
+
+
     //rotation of the points 90° ccw around (0|0) 
     // done by multiplication of the values with th matrix: (cos⁡ x | −sin⁡ x)
     //                                                      (sin⁡ x |  cos⁡ x)
     //                                                    where x is 90 (ccw rotation)
       flapPoint[0] = rollPitchPoint[1]*-1;
       flapPoint[1] = rollPitchPoint[0];
+
+        debugBuffer += (String)flapPoint[0]+","+(String)flapPoint[1]+",";
   }
   
   int calculateFlapArea() {
     //read and map control faactor
       int factor = map(rxData[controlFactorRx], 990, 2010, 0, 20);
-    //calculate P factor = norm(flapVector / 56) --> maximum is X040 and 
-      float p = sqrt(flapPoint[0]*flapPoint[0]+flapPoint[1]*flapPoint[1])/56;
-    //calculate the final angle in where the flap is on
-    //           (control Factor)   (°)  (P factor)
-      return round((1+(factor/20)) * 90 * p);
+      debugBuffer += (String)factor+",";
+    //calculate P factor = norm(flapVector / 60) --> maximum is 80/60=1.3333 and 
+      float p = sqrt(flapPoint[0]*flapPoint[0]+flapPoint[1]*flapPoint[1])/60;
+      debugBuffer += (String)p+",";
+    //calculate the final angle/area in which the flap is on
+    //           (control Factor) (base angle)  (P factor)
+      int flapAngle = round((factor/20) * 90 * p);//max is 1 * 90 * 1.33 = 120°
+      debugBuffer += (String)flapAngle+",";
+      
+      return flapAngle;
   }
   
   void calculateFlapOnPoint(int pAngle) {
     //since flap point in in the center of the area, on point is half of the area before it
       int halfAngle = round(pAngle/2);
     
-    //calculate the points using a rotation matrix
+    //calculate the on point using a rotation matrix for a ccw rotation by halfAngle
       int tmpX = cos(halfAngle)*flapPoint[0]-sin(halfAngle)*flapPoint[1];
       int tmpY = sin(halfAngle)*flapPoint[0]+cos(halfAngle)*flapPoint[1];
-  
+
+      debugBuffer += (String)tmpX+","+(String)tmpY+",";
+      
     //save them in the array
       flapPoint[0] = tmpX;
       flapPoint[1] = tmpY;
@@ -474,12 +489,15 @@ void controlServos() {
           }
         }
     angleToFlap = round(acos(cosP));
+    debugBuffer += (String)angleToFlap+",";
   }
   
   void angleToTime(int pAngle) {
     //Zeiten berrechnen
         timeToFlap = diffTime/(360*angleToFlap);
+        debugBuffer += (String)timeToFlap+",";
         timeFlapOn = diffTime/(360*pAngle);
+        debugBuffer += (String)timeFlapOn+",";
   }
 
   //Funktionen für die Winkelwahl
@@ -492,7 +510,6 @@ void controlServos() {
     double result = pSkalarprodukt/pDiffVektorLaenge; //refVektorLaenge*diffVektorLaenge = 1*diffVektorLaenge
     return result;
   }
-*/
 
 //Start and Landing foo
   void waitForStartSpin() {
@@ -520,12 +537,19 @@ void controlServos() {
   }
 
   void landingSequence() {
-    regler.write(80);
-    controlLoopActive = false;
-    spinOff = false;
-    zAccPeak();
-    regler.write(0);
-    servo.write(90); 
+    //reduce the motor speed
+      regler.write(80);
+    //deactivate the control Loop
+      controlLoopActive = false;
+      spinOff = false;
+    zAccPeak();//wait for touchdown
+    regler.write(0);//stop the motor
+    servo.write(90);//level the rotor blades
+    userLiftControlActive = false;//disable the collective pitch
+    while(rxData[safetySwRx] > 1100) {}//wait for confirmation that the copter is attached to a pc to send the flightlog
+    //HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
+    WIREDSERIAL.println(debugBuffer);//send debug values to pc
+    cli();
     while(1);
   }
   
@@ -558,7 +582,7 @@ void updateAngle() {
   if (gyroYangle < -180 || gyroYangle > 180)
     gyroYangle = kalAngleY;
 
-  debugBuffer += (String)kalAngleX+","+(String)kalAngleY;
+  debugBuffer += (String)kalAngleX+","+(String)kalAngleY+",";
 }
 
 void updateMPU9250() {
