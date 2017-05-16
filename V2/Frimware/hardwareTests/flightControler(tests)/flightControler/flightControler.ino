@@ -75,8 +75,8 @@
     //pitch and roll values
       int roll, pitch; // Roll and pitch are calculated using the accelerometer
     //calculated angle values
-      double gyroXangle, gyroYangle; // Angle calculate using the gyro only
-      double kalAngleX, kalAngleY; // Calculated angle using a Kalman filter
+      float gyroXangle, gyroYangle; // Angle calculate using the gyro only
+      float kalAngleX, kalAngleY; // Calculated angle using a Kalman filter
     //timer variable 
       uint32_t timer;
   //controlLoop
@@ -95,9 +95,9 @@
     volatile unsigned int irTimer = 0;
     volatile boolean on = false;
   //rpm calculation
-    volatile double lastTurnTimestamp = 0.00;
-    volatile double diffTime;
-    volatile double rpm;
+    volatile float lastTurnTimestamp = 0.00;
+    volatile float diffTime;
+    volatile float rpm;
   //Debug Buffer
     String debugBuffer = "DEBUG START: ";
   //stat indicator  
@@ -244,7 +244,7 @@ void setup() {
     HWSERIAL.println("DONE");
 
   //check landing switch
-    while(rxData[safetySwRx] < 1000) {
+    while(rxData[safetySwRx] > 1100) {
       HWSERIAL.println("Please turn the landing switch off!");
       delay(1500);
     }
@@ -330,7 +330,7 @@ void loop() {
     }
 
   //landing sequence
-    if(rxData[safetySwRx] < 1100) {
+    if(rxData[safetySwRx] > 1100) {
       landingSequence();
     }
   delay(47);//prime number to reduce timer conflicts
@@ -405,8 +405,8 @@ void controlServos() {
 
 
     //rotation of the points 90° ccw around (0|0) 
-    // done by multiplication of the values with th matrix: (cos⁡ x | −sin⁡ x)
-    //                                                      (sin⁡ x |  cos⁡ x)
+    // done by multiplication of the values with th matrix: (cos⁡ x | −sin⁡ x)  
+    //                                                      (sin⁡ x |  cos⁡ x)  
     //                                                    where x is 90 (ccw rotation)
       flapPoint[0] = rollPitchPoint[1]*-1;
       flapPoint[1] = rollPitchPoint[0];
@@ -416,14 +416,14 @@ void controlServos() {
   
   int calculateFlapArea() {
     //read and map control faactor
-      int factor = map(rxData[controlFactorRx], 990, 2010, 0, 20);
+      int factor = map(rxData[controlFactorRx], 990, 2010, 0, 20)/20;
       debugBuffer += (String)factor+",";   
     //calculate P factor = norm(flapVector / 60) --> maximum is 80/60=1.3333 and 
-      float p = sqrt(flapPoint[0]*flapPoint[0]+flapPoint[1]*flapPoint[1])/60;
+      float p = sqrt(flapPoint[0]*flapPoint[0]+flapPoint[1]*flapPoint[1])/60.00;
       debugBuffer += (String)p+",";
     //calculate the final angle/area in which the flap is on
     //           (control Factor) (base angle)  (P factor)
-      int flapAngle = round((factor/20) * 90 * p);//max is 1 * 90 * 1.33 = 120°
+      int flapAngle = round(factor * 90 * p);//max is 1 * 90 * 1.33 = 120°
       debugBuffer += (String)flapAngle+",";
       
       return flapAngle;
@@ -431,7 +431,7 @@ void controlServos() {
   
   void calculateFlapOnPoint(int pAngle) {
     //since flap point in in the center of the area, on point is half of the area before it
-      int halfAngle = round(pAngle/2);
+      int halfAngle = round(pAngle/2.00);
     
     //calculate the on point using a rotation matrix for a ccw rotation by halfAngle
       int tmpX = cos(halfAngle)*flapPoint[0]-sin(halfAngle)*flapPoint[1];
@@ -515,13 +515,13 @@ void controlServos() {
   }
 
   //Funktionen für die Winkelwahl
-  double cosPSpitz(double pSkalarprodukt, double pDiffVektorLaenge) {
-    double result = sqrt(pSkalarprodukt*pSkalarprodukt)/pDiffVektorLaenge; //refVektorLaenge*diffVektorLaenge = 1*diffVektorLaenge
+  float cosPSpitz(float pSkalarprodukt, float pDiffVektorLaenge) {
+    float result = sqrt(pSkalarprodukt*pSkalarprodukt)/pDiffVektorLaenge; //refVektorLaenge*diffVektorLaenge = 1*diffVektorLaenge
     return result;
   }
   
-  double cosPStumpf(double pSkalarprodukt, double pDiffVektorLaenge) {
-    double result = pSkalarprodukt/pDiffVektorLaenge; //refVektorLaenge*diffVektorLaenge = 1*diffVektorLaenge
+  float cosPStumpf(float pSkalarprodukt, float pDiffVektorLaenge) {
+    float result = pSkalarprodukt/pDiffVektorLaenge; //refVektorLaenge*diffVektorLaenge = 1*diffVektorLaenge
     return result;
   }
 
@@ -560,7 +560,7 @@ void controlServos() {
     regler.write(0);//stop the motor
     servo.write(90);//level the rotor blades
     userLiftControlActive = false;//disable the collective pitch
-    while(rxData[safetySwRx] < 1100) {}//wait for confirmation that the copter is attached to a pc to send the flightlog
+    while(rxData[safetySwRx] > 1100) {}//wait for confirmation that the copter is attached to a pc to send the flightlog
     //HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
     WIREDSERIAL.println(debugBuffer);//send debug values to pc
     cli();
@@ -571,12 +571,12 @@ void controlServos() {
 void updateAngle() {
   updateMPU9250();
 
-  double dt = (double)(micros() - timer) / 1000000; // Calculate delta time
+  float dt = (float)(micros() - timer) / 1000000; // Calculate delta time
   timer = micros();
   /* Roll and pitch estimation */
   updatePitchRoll();
-  double gyroXrate = gyroX / 131.0; // Convert to deg/s
-  double gyroYrate = gyroY / 131.0; // Convert to deg/s
+  float gyroXrate = gyroX / 131.0; // Convert to deg/s
+  float gyroYrate = gyroY / 131.0; // Convert to deg/s
 
   // This fixes the transition problem when the accelerometer angle jumps between -180 and 180 degrees
   if ((roll < -90 && kalAngleX > 90) || (roll > 90 && kalAngleX < -90)) {
