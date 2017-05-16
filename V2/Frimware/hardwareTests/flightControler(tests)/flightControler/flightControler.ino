@@ -120,10 +120,10 @@
         //calc rpm
           diffTime = micros()-lastTurnTimestamp;
           lastTurnTimestamp = micros();
-          rpm=60*(1000000/diffTime);//(String)60*(1/(diffTime/1000000));
+          rpm=round(60*(1000000/diffTime));//(String)60*(1/(diffTime/1000000));
           startDiff = millis()-startTimestamp;//time since start
           debugBuffer += "\n"+(String)startDiff+","+(String)diffTime+","+(String)rpm+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
-        updateAngle();
+        //updateAngle();
       }
       irTimer = micros()+recieveTollerance;//offset the timer
       on=true;//indicate that something has been recieved
@@ -215,7 +215,7 @@ void setup() {
 
   //activating kill switch
     killCheck.priority(150);
-    killCheck.begin(killAll, 200000);//prime number for less conflicts between timers
+    killCheck.begin(killAll, 19000);//prime number for less conflicts between timers
 
   //initialise IMU
     HWSERIAL.print("Initialising IMU...");
@@ -501,7 +501,7 @@ void controlServos() {
             //skipThisRound = true;
           }
         }
-    angleToFlap = round(acos(cosP));
+    angleToFlap = round(acos(cosP));//--------------------------------------------error here
     debugBuffer += (String)rotor0first+",";
     debugBuffer += (String)angleToFlap+",";  
   }
