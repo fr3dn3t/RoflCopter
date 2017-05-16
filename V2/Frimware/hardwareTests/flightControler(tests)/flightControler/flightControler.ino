@@ -1,3 +1,6 @@
+//debug: debugBuffer += "\n"+startDiff,diffTime,rpm,liftRx,kalAngleX,kalAngleY  ,rollPitchPoint[0]+","+(String)rollPitchPoint[1]+","(String)flapPoint[0]+","+(String)flapPoint[1]+","(String)factor+","(String)p+","(String)flapAngle+","(String)tmpX+","+(String)tmpY+","(String)angleToFlap+","(String)timeToFlap+","(String)timeFlapOn+","
+
+
 #include <Servo.h>
 #include <SPI.h>
 #include <MPU9250.h>
@@ -36,6 +39,7 @@
   #define throttleRx      3
   #define safetySwRx      4
   #define killSwRx        5
+  
   #define controlFactorRx 7
 
 //instances
@@ -68,7 +72,7 @@
     //variables for raw values
       int accX, accY, accZ;
       int gyroX, gyroY, gyroZ;
-      int16_t tempRaw;
+      int32_t tempRaw;
     //pitch and roll values
       int roll, pitch; // Roll and pitch are calculated using the accelerometer
     //calculated angle values
@@ -92,15 +96,15 @@
     volatile unsigned int irTimer = 0;
     volatile boolean on = false;
   //rpm calculation
-    uint16_t lastTurnTimestamp = 0.00;
-    uint16_t diffTime;
-    double rpm;
+    volatile uint32_t lastTurnTimestamp = 0;
+    volatile uint32_t diffTime;
+    volatile double rpm;
   //Debug Buffer
     String debugBuffer = "DEBUG START: ";
   //stat indicator  
     volatile boolean spinOff = false;
-    volatile uint16_t startTimestamp; //the value of millis() at spin off will be stored here to have a time reference in the debug logs
-    volatile uint16_t startDiff;
+    volatile uint32_t startTimestamp; //the value of millis() at spin off will be stored here to have a time reference in the debug logs
+    volatile uint32_t startDiff;
   //flapControl
     boolean rotor0first;
     int angleToFlap;
@@ -119,7 +123,7 @@
           lastTurnTimestamp = micros();
           rpm=60*(1000000/diffTime);//(String)60*(1/(diffTime/1000000));
           startDiff = millis()-startTimestamp;//time since start
-          debugBuffer += "\n"+(String)startDiff+","+(String)diffTime+","+(String)rpm+","+(String)map(rxData[throttleRx], 990, 2000, 30, 180)+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
+          debugBuffer += "\n"+(String)startDiff+","+(String)diffTime+","+(String)rpm+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
         updateAngle();
       }
       irTimer = micros()+recieveTollerance;//offset the timer
@@ -128,7 +132,8 @@
     
   //PPM
     void rxFALLING() {//will be called when the ppm peak is over
-      if(micros()-rxPre > 8000) {//if the current peak is the first peank after the the syncro break of 10ms
+      //HWSERIAL.println(micros());
+      if(micros()-rxPre > 6000) {//if the current peak is the first peank after the the syncro break of 10ms
         rxPre = micros();
         channelNr = 0;//reset the channel number to syncronize again
         firstRoundCounter--;//the values in the first round are complete rubish, since there would'nt have been a first channel sync, this var indicates for the other functions, if the values are reliable
@@ -173,9 +178,6 @@ void setup() {
   //initialise esc
     regler.attach(escPin);
     regler.write(0);
-  //start the servo Timer
-    servoTimer.priority(254);
-    servoTimer.begin(controlServos, 31000);//31ms - prime number for less conflicts between timers
 
   //SPI for IMU
     SPI.setMISO(8);
@@ -207,10 +209,11 @@ void setup() {
       //nothing to do here
     }
     HWSERIAL.println("DONE");
+
   //activating kill switch
     killCheck.priority(150);
-    killCheck.begin(killAll, 190000);//prime number for less conflicts between timers
-  
+    killCheck.begin(killAll, 200000);//prime number for less conflicts between timers
+
   //initialise IMU
     HWSERIAL.print("Initialising IMU...");
     mpu.init(true);
@@ -238,7 +241,7 @@ void setup() {
     HWSERIAL.println("DONE");
 
   //check landing switch
-    while(rxData[safetySwRx] > 1000) {
+    while(rxData[safetySwRx] < 1000) {
       HWSERIAL.println("Please turn the landing switch off!");
       delay(1500);
     }
@@ -259,6 +262,10 @@ void setup() {
     blinker.end();
     //blinker.begin(blinkerFunction, 200000);
     waitForStartSpin();
+    
+    //start the servo Timer
+      servoTimer.priority(254);
+      servoTimer.begin(controlServos, 31000);//31ms - prime number for less conflicts between timers
     
     //when start spin occured, store the value of millis() in the var to have a time reference in the debug log
       startTimestamp = millis();
@@ -300,9 +307,11 @@ void loop() {
   
   //adjust the motor speed
     if(!controlLoopActive) {
-      if(rpm >= 700) {
-        regler.write(140);//reduce the motor's speed; value gathered from test flights
-        controlLoopActive = true;
+      if(startDiff > 3000) {
+        if(rpm >= 700) {
+          regler.write(140);//reduce the motor's speed; value gathered from test flights
+          controlLoopActive = true;
+        }
       }
     }
 
@@ -321,7 +330,7 @@ void loop() {
     }
 
   //landing sequence
-    if(rxData[safetySwRx] > 1100) {
+    if(rxData[safetySwRx] < 1100) {
       landingSequence();
     }
   delay(47);//prime number to reduce timer conflicts
@@ -331,11 +340,15 @@ void killAll() {
   if(rxData[killSwRx] > 1800 && validRxValues) {
     regler.write(0);
     delay(30);
+    controlLoopActive = false;
+    spinOff = false;
+    userLiftControlActive = false;
     //cli();
-    //servo.write(90);
+    servo.write(90);
+    delay(30);
     digitalWriteFast(LED, LOW);
     HWSERIAL.println("KILL");
-    while(rxData[safetySwRx] > 1100) {}
+    while(1) {} //rxData[safetySwRx] > 1100
     //HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
     WIREDSERIAL.println(debugBuffer);//send debug values to pc
     cli();
@@ -358,7 +371,8 @@ void killAll() {
 
 void controlServos() {
   if(validRxValues && userLiftControlActive) {
-    servo.write(map(rxData[liftRx], 990, 2010, 80, 100));
+    //servo.write(map(rxData[liftRx], 990, 2010, 80, 100));
+    HWSERIAL.println(map(rxData[liftRx], 990, 2010, 80, 100));
   }
 }
 
@@ -404,7 +418,7 @@ void controlServos() {
   int calculateFlapArea() {
     //read and map control faactor
       int factor = map(rxData[controlFactorRx], 990, 2010, 0, 20);
-      debugBuffer += (String)factor+",";
+      debugBuffer += (String)factor+",";   
     //calculate P factor = norm(flapVector / 60) --> maximum is 80/60=1.3333 and 
       float p = sqrt(flapPoint[0]*flapPoint[0]+flapPoint[1]*flapPoint[1])/60;
       debugBuffer += (String)p+",";
@@ -489,7 +503,7 @@ void controlServos() {
           }
         }
     angleToFlap = round(acos(cosP));
-    debugBuffer += (String)angleToFlap+",";
+    debugBuffer += (String)angleToFlap+",";  
   }
   
   void angleToTime(int pAngle) {
@@ -538,7 +552,7 @@ void controlServos() {
 
   void landingSequence() {
     //reduce the motor speed
-      regler.write(80);
+      regler.write(100);
     //deactivate the control Loop
       controlLoopActive = false;
       spinOff = false;
@@ -546,7 +560,7 @@ void controlServos() {
     regler.write(0);//stop the motor
     servo.write(90);//level the rotor blades
     userLiftControlActive = false;//disable the collective pitch
-    while(rxData[safetySwRx] > 1100) {}//wait for confirmation that the copter is attached to a pc to send the flightlog
+    while(rxData[safetySwRx] < 1100) {}//wait for confirmation that the copter is attached to a pc to send the flightlog
     //HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
     WIREDSERIAL.println(debugBuffer);//send debug values to pc
     cli();

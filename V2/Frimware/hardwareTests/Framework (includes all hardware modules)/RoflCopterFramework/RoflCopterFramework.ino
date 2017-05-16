@@ -114,7 +114,7 @@
     
   //PPM
     void rxFALLING() {//will be called when the ppm peak is over
-      if(micros()-rxPre > 8000) {//if the current peak is the first peank after the the syncro break of 10ms
+      if(micros()-rxPre > 6000) {//if the current peak is the first peank after the the syncro break of >6ms
         rxPre = micros();
         channelNr = 0;//reset the channel number to syncronize again
         firstRoundCounter--;//the values in the first round are complete rubish, since there would'nt have been a first channel sync, this var indicates for the other functions, if the values are reliable
@@ -278,6 +278,7 @@ void loop() {
 
 void killAll() {
   if(rxData[killSwRx] > 1800 && validRxValues) {
+    cli();
     HWSERIAL.println("KILL");
     regler.write(10);
     delay(30);
