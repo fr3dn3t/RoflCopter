@@ -501,7 +501,7 @@ void controlServos() {
             //skipThisRound = true;
           }
         }
-    angleToFlap = round(acos(cosP));//--------------------------------------------error here
+    angleToFlap = round(acos(cosP)*57296/1000);//arccos of cosP (in radians) and conversation from radians to degrees
     debugBuffer += (String)rotor0first+",";
     debugBuffer += (String)angleToFlap+",";  
   }
