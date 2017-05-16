@@ -1,5 +1,4 @@
-//debug: debugBuffer += "\n"+startDiff,diffTime,rpm,liftRx,kalAngleX,kalAngleY  ,rollPitchPoint[0]+","+(String)rollPitchPoint[1]+","(String)flapPoint[0]+","+(String)flapPoint[1]+","(String)factor+","(String)p+","(String)flapAngle+","(String)tmpX+","+(String)tmpY+","(String)angleToFlap+","(String)timeToFlap+","(String)timeFlapOn+","
-
+//debug: debugBuffer += "\n"+startDiff,diffTime,rpm,liftRx,kalAngleX,kalAngleY,rollPitchPoint[0],rollPitchPoint[1],flapPoint[0],flapPoint[1],factor,p,flapAngle,tmpX,tmpY,rotor0first,angleToFlap,timeToFlap,timeFlapOn,
 
 #include <Servo.h>
 #include <SPI.h>
@@ -96,8 +95,8 @@
     volatile unsigned int irTimer = 0;
     volatile boolean on = false;
   //rpm calculation
-    volatile uint32_t lastTurnTimestamp = 0;
-    volatile uint32_t diffTime;
+    volatile double lastTurnTimestamp = 0.00;
+    volatile double diffTime;
     volatile double rpm;
   //Debug Buffer
     String debugBuffer = "DEBUG START: ";
@@ -210,6 +209,10 @@ void setup() {
     }
     HWSERIAL.println("DONE");
 
+    //start the servo Timer
+      servoTimer.priority(254);
+      servoTimer.begin(controlServos, 31000);//31ms - prime number for less conflicts between timers
+
   //activating kill switch
     killCheck.priority(150);
     killCheck.begin(killAll, 200000);//prime number for less conflicts between timers
@@ -249,6 +252,7 @@ void setup() {
     
   //safety check
     HWSERIAL.println("Be sure that the motors, flaps and servos are clear! Respong to start the engine.");
+    HWSERIAL.clear();
     while(!(HWSERIAL.available() > 0)) {
       //nothing to do here
     }
@@ -262,10 +266,6 @@ void setup() {
     blinker.end();
     //blinker.begin(blinkerFunction, 200000);
     waitForStartSpin();
-    
-    //start the servo Timer
-      servoTimer.priority(254);
-      servoTimer.begin(controlServos, 31000);//31ms - prime number for less conflicts between timers
     
     //when start spin occured, store the value of millis() in the var to have a time reference in the debug log
       startTimestamp = millis();
@@ -307,9 +307,9 @@ void loop() {
   
   //adjust the motor speed
     if(!controlLoopActive) {
-      if(startDiff > 3000) {
+      if(startDiff > 2000) {
         if(rpm >= 700) {
-          regler.write(140);//reduce the motor's speed; value gathered from test flights
+          regler.write(130);//reduce the motor's speed; value gathered from test flights
           controlLoopActive = true;
         }
       }
@@ -348,7 +348,7 @@ void killAll() {
     delay(30);
     digitalWriteFast(LED, LOW);
     HWSERIAL.println("KILL");
-    while(1) {} //rxData[safetySwRx] > 1100
+    while(rxData[safetySwRx] > 1100) {}
     //HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
     WIREDSERIAL.println(debugBuffer);//send debug values to pc
     cli();
@@ -371,8 +371,7 @@ void killAll() {
 
 void controlServos() {
   if(validRxValues && userLiftControlActive) {
-    //servo.write(map(rxData[liftRx], 990, 2010, 80, 100));
-    HWSERIAL.println(map(rxData[liftRx], 990, 2010, 80, 100));
+    servo.write(map(rxData[liftRx], 990, 2010, 80, 100));
   }
 }
 
@@ -503,6 +502,7 @@ void controlServos() {
           }
         }
     angleToFlap = round(acos(cosP));
+    debugBuffer += (String)rotor0first+",";
     debugBuffer += (String)angleToFlap+",";  
   }
   
@@ -552,7 +552,7 @@ void controlServos() {
 
   void landingSequence() {
     //reduce the motor speed
-      regler.write(100);
+      regler.write(90);
     //deactivate the control Loop
       controlLoopActive = false;
       spinOff = false;
