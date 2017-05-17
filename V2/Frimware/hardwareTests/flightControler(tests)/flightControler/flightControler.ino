@@ -2,6 +2,7 @@
 
 #include <Servo.h>
 #include <SPI.h>
+#include <math.h>
 #include <MPU9250.h>
 #include "Kalman.h" // Source: https://github.com/TKJElectronics/KalmanFilter
 
@@ -95,9 +96,9 @@
     volatile unsigned int irTimer = 0;
     volatile boolean on = false;
   //rpm calculation
-    volatile float lastTurnTimestamp = 0.00;
-    volatile float diffTime;
-    volatile float rpm;
+    volatile uint32_t lastTurnTimestamp = 0;
+    volatile uint32_t diffTime;
+    volatile uint32_t rpm;
   //Debug Buffer
     String debugBuffer = "DEBUG START: ";
   //stat indicator  
@@ -120,7 +121,7 @@
         //calc rpm
           diffTime = micros()-lastTurnTimestamp;
           lastTurnTimestamp = micros();
-          rpm=round(60*(1000000/diffTime));//(String)60*(1/(diffTime/1000000));
+          rpm=round(60*1000000.0/diffTime);//(String)60*(1/(diffTime/1000000));
           startDiff = millis()-startTimestamp;//time since start
           debugBuffer += "\n"+(String)startDiff+","+(String)diffTime+","+(String)rpm+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
         //updateAngle();
@@ -508,9 +509,9 @@ void controlServos() {
   
   void angleToTime(int pAngle) {
     //Zeiten berrechnen
-        timeToFlap = diffTime/(360*angleToFlap);
+        timeToFlap = diffTime*(angleToFlap/360.00);
         debugBuffer += (String)timeToFlap+",";
-        timeFlapOn = diffTime/(360*pAngle);
+        timeFlapOn = diffTime*(pAngle/360.00);
         debugBuffer += (String)timeFlapOn+",";
   }
 
