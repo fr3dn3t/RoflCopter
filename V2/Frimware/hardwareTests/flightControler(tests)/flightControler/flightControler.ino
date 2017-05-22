@@ -112,6 +112,10 @@
     int timeToFlap;
     int timeFlapOn;
     int areaThreshold = 30;//threshold value (°); control will only take action, if the calculated area is greater than this value
+  //vars for timer control
+    uint16_t nextWait;//value to apply in the next interrupt cycle, set by main loop; 16bit int since the timer register is also 16bit
+    int nextPrescaler;//value to apply in the next interrupt cycle - value between 0 - 4, set by main loop
+    int prescaler[8] = {1,2,4,8,16,32,64,128}; //array with the fixed prescaler values for the internal timers
   
 //interrupt functions
   //IR
