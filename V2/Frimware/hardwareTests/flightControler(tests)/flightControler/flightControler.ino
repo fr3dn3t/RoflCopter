@@ -36,7 +36,7 @@
   #define liftRx          0
   #define rollRx          1
   #define pitchRx         2
-  #define throttleRx      3
+  #define flapTestRx      3
   #define safetySwRx      4
   #define killSwRx        5
   
@@ -123,6 +123,9 @@
           lastTurnTimestamp = micros();
           rpm=round(60*1000000.0/diffTime);//(String)60*(1/(diffTime/1000000));
           startDiff = millis()-startTimestamp;//time since start
+          if(rxData[flapTestRx] > 1800) {
+            digitalWriteFast(flap0, HIGH);
+          }
           debugBuffer += "\n"+(String)startDiff+","+(String)diffTime+","+(String)rpm+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
         //updateAngle();
       }
@@ -310,7 +313,8 @@ void loop() {
     if(!controlLoopActive) {
       if(startDiff > 2000) {
         if(rpm >= 700) {
-          regler.write(130);//reduce the motor's speed; value gathered from test flights
+          regler.write(132);//reduce the motor's speed; value gathered from test flights
+          delay(30);
           controlLoopActive = true;
         }
       }
@@ -320,6 +324,7 @@ void loop() {
     //if the current timespamp is greater than the last buffered ir timestamp 
     if((micros() >= irTimer)&& (irTimer != 0)) { //irTimer = 0 => disabled
      on=false;
+     digitalWriteFast(flap0, LOW);
      irTimer = 0;
     }
     
@@ -344,12 +349,9 @@ void killAll() {
     controlLoopActive = false;
     spinOff = false;
     userLiftControlActive = false;
-    //cli();
-    servo.write(90);
-    delay(30);
     digitalWriteFast(LED, LOW);
     HWSERIAL.println("KILL");
-    while(rxData[safetySwRx] > 1100) {}
+    while(rxData[safetySwRx] > 1100) {}//wait for confirmation that the copter is attached to a pc to send the flightlog
     //HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
     WIREDSERIAL.println(debugBuffer);//send debug values to pc
     cli();
@@ -553,7 +555,7 @@ void controlServos() {
 
   void landingSequence() {
     //reduce the motor speed
-      regler.write(90);
+      regler.write(95);
     //deactivate the control Loop
       controlLoopActive = false;
       spinOff = false;
