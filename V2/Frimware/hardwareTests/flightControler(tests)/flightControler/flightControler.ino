@@ -313,7 +313,7 @@ void loop() {
     if(!controlLoopActive) {
       if(startDiff > 2000) {
         if(rpm >= 700) {
-          regler.write(132);//reduce the motor's speed; value gathered from test flights
+          regler.write(130);//reduce the motor's speed; value gathered from test flights
           delay(30);
           controlLoopActive = true;
         }
