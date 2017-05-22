@@ -50,6 +50,7 @@
       IntervalTimer servoTimer;
       IntervalTimer blinker;
       IntervalTimer killCheck;
+      IntervalTimer flapTimer;
   //IMU instance
     MPU9250 mpu(SPI_CLOCK, SS_PIN, BITS_DLPF_CFG_256HZ_NOLPF2, BITS_DLPF_CFG_256HZ_NOLPF2);
   //Kalman instance
@@ -112,10 +113,7 @@
     int timeToFlap;
     int timeFlapOn;
     int areaThreshold = 30;//threshold value (°); control will only take action, if the calculated area is greater than this value
-  //vars for timer control
-    uint16_t nextWait;//value to apply in the next interrupt cycle, set by main loop; 16bit int since the timer register is also 16bit
-    int nextPrescaler;//value to apply in the next interrupt cycle - value between 0 - 4, set by main loop
-    int prescaler[8] = {1,2,4,8,16,32,64,128}; //array with the fixed prescaler values for the internal timers
+    boolean flapping = false;//indicates whether there is a running flap command or not so the flap timer won't accedently reset
   
 //interrupt functions
   //IR
@@ -127,9 +125,6 @@
           lastTurnTimestamp = micros();
           rpm=round(60*1000000.0/diffTime);//(String)60*(1/(diffTime/1000000));
           startDiff = millis()-startTimestamp;//time since start
-          if(rxData[flapTestRx] > 1800) {
-            digitalWriteFast(flap0, HIGH);
-          }
           debugBuffer += "\n"+(String)startDiff+","+(String)diffTime+","+(String)rpm+","+(String)map(rxData[liftRx], 990, 2000, 30, 180)+",";
         //updateAngle();
       }
@@ -175,8 +170,10 @@ void setup() {
     //outputs
       pinMode(flap0, OUTPUT);
         digitalWriteFast(flap0, LOW);
+      
       pinMode(flap1, OUTPUT);
         digitalWriteFast(flap1, LOW);
+     
       pinMode(LED, OUTPUT);
 
   //initialise servos
@@ -225,6 +222,9 @@ void setup() {
     killCheck.priority(150);
     killCheck.begin(killAll, 19000);//prime number for less conflicts between timers
 
+  //set the priority for the flap timer
+    flapTimer.priority(180);
+    
   //initialise IMU
     HWSERIAL.print("Initialising IMU...");
     mpu.init(true);
@@ -315,7 +315,7 @@ void loop() {
   
   //adjust the motor speed
     if(!controlLoopActive) {
-      if(startDiff > 2000) {
+      if(startDiff > 1500) {
         if(rpm >= 700) {
           regler.write(130);//reduce the motor's speed; value gathered from test flights
           delay(30);
@@ -328,7 +328,6 @@ void loop() {
     //if the current timespamp is greater than the last buffered ir timestamp 
     if((micros() >= irTimer)&& (irTimer != 0)) { //irTimer = 0 => disabled
      on=false;
-     digitalWriteFast(flap0, LOW);
      irTimer = 0;
     }
     
@@ -349,6 +348,8 @@ void loop() {
 void killAll() {
   if(rxData[killSwRx] > 1800 && validRxValues) {
     regler.write(0);
+    digitalWriteFast(flap0, LOW);
+    digitalWriteFast(flap1, LOW);
     delay(30);
     controlLoopActive = false;
     spinOff = false;
@@ -398,8 +399,11 @@ void controlServos() {
       //calculate the time when the flap has to be turned on and how long
         angleToTime(area);
      
-      //set the hardwaretimers
-       // setTimers();
+      //set the hardwaretimers and flap
+        if((rxData[flapTestRx] > 1800) && !flapping) {
+          flapping = true;
+          flapTimer.begin(flapOn, timeToFlap);
+        }
     }
   }
   
@@ -430,7 +434,7 @@ void controlServos() {
       debugBuffer += (String)p+",";
     //calculate the final angle/area in which the flap is on
     //           (control Factor) (base angle)  (P factor)
-      int flapAngle = round(factor * 90 * p);//max is 1 * 90 * 1.33 = 120°
+      int flapAngle = round(factor * 120 * p);//max is 1 * 90 * 1.33 = 120°
       debugBuffer += (String)flapAngle+",";
       
       return flapAngle;
@@ -521,6 +525,24 @@ void controlServos() {
         debugBuffer += (String)timeFlapOn+",";
   }
 
+  void flapOn() {
+    if(rotor0first) {
+      digitalWriteFast(flap0, HIGH);
+    }
+    else {
+      digitalWriteFast(flap1, HIGH);
+    }
+    flapTimer.end();
+    flapTimer.begin(flapOff, timeFlapOn);
+  }
+  
+  void flapOff() {
+      digitalWriteFast(flap0, LOW);
+      digitalWriteFast(flap1, LOW);
+      flapTimer.end();
+      flapping = false;
+  }
+
   //Funktionen für die Winkelwahl
   float cosPSpitz(float pSkalarprodukt, float pDiffVektorLaenge) {
     float result = sqrt(pSkalarprodukt*pSkalarprodukt)/pDiffVektorLaenge; //refVektorLaenge*diffVektorLaenge = 1*diffVektorLaenge
@@ -563,7 +585,13 @@ void controlServos() {
     //deactivate the control Loop
       controlLoopActive = false;
       spinOff = false;
-    zAccPeak();//wait for touchdown
+    //deactivate the flaps, just to be on the safe side
+      flapTimer.end();
+      digitalWriteFast(flap0, LOW);
+      digitalWriteFast(flap1, LOW);
+    //wait for touchdown
+      zAccPeak();
+      
     regler.write(0);//stop the motor
     servo.write(90);//level the rotor blades
     userLiftControlActive = false;//disable the collective pitch
