@@ -115,6 +115,9 @@
     int timeFlapOn;
     int areaThreshold = 30;//threshold value (°); control will only take action, if the calculated area is greater than this value
     boolean flapping = false;//indicates whether there is a running flap command or not so the flap timer won't accedently reset
+  //flaptime differences (meassured with highspeed camera)
+    int timeToPullFlapDown = 3000 //time (us) which is needed to pull the flap down
+    int timeToReleaseFlap  = 7000 //time (us) which is needed to release flap / time the electromagnetic field in the solenoid needs to collapse
   
 //interrupt functions
   //IR
@@ -408,7 +411,7 @@ void controlServos() {
       //set the hardwaretimers and flap
         if((rxData[flapTestRx] > 1800) && !flapping) {
           flapping = true;
-          flapTimer.begin(flapOn, timeToFlap);
+          flapTimer.begin(flapOn, timeToFlap-timeToPullFlapDown);
         }
     }
   }
@@ -440,7 +443,7 @@ void controlServos() {
       debugBuffer += (String)p+",";
     //calculate the final angle/area in which the flap is on
     //           (control Factor) (base angle)  (P factor)
-      int flapAngle = round(factor * 150 * p);//max is 1 * 90 * 1.33 = 120°
+      int flapAngle = round(factor * 180 * p);//max is 1 * 180 * 1.33 = 240°
       debugBuffer += (String)flapAngle+",";
       
       return flapAngle;
@@ -541,7 +544,7 @@ void controlServos() {
     }
     digitalWriteFast(blueLED, HIGH);
     flapTimer.end();
-    flapTimer.begin(flapOff, timeFlapOn);
+    flapTimer.begin(flapOff, timeFlapOn-timeToReleaseFlap);
   }
   
   void flapOff() {
