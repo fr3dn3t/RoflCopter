@@ -4,7 +4,7 @@
 #include <SPI.h>
 #include <math.h>
 #include <MPU9250.h>
-#include "Kalman.h" // Source: https://github.com/TKJElectronics/KalmanFilter
+#include "Kalman.h" // Source: https://github.com/TKJElectronics/KalmanFilterl
 
 
 //HM-11 BLE 
@@ -17,6 +17,7 @@
 //pins
   //LED
     #define LED      13
+    #define blueLED   5
   //Flaps
     #define flap0    15
     #define flap1    17
@@ -173,8 +174,13 @@ void setup() {
       
       pinMode(flap1, OUTPUT);
         digitalWriteFast(flap1, LOW);
-     
+
+      pinMode(4, OUTPUT);
+      digitalWriteFast(4, LOW);
       pinMode(LED, OUTPUT);
+      pinMode(blueLED, OUTPUT);
+      digitalWriteFast(blueLED, LOW);
+
 
   //initialise servos
     servo.attach(servoPin);
@@ -337,7 +343,7 @@ void loop() {
     else {
       digitalWrite(LED, LOW);
     }
-
+    
   //landing sequence
     if(rxData[safetySwRx] > 1100) {
       landingSequence();
@@ -357,7 +363,7 @@ void killAll() {
     digitalWriteFast(LED, LOW);
     HWSERIAL.println("KILL");
     while(rxData[safetySwRx] > 1100) {}//wait for confirmation that the copter is attached to a pc to send the flightlog
-    //HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
+    HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
     WIREDSERIAL.println(debugBuffer);//send debug values to pc
     cli();
     while(1);
@@ -528,10 +534,12 @@ void controlServos() {
   void flapOn() {
     if(rotor0first) {
       digitalWriteFast(flap0, HIGH);
+      digitalWriteFast(LED, HIGH);
     }
     else {
       digitalWriteFast(flap1, HIGH);
     }
+    digitalWriteFast(blueLED, HIGH);
     flapTimer.end();
     flapTimer.begin(flapOff, timeFlapOn);
   }
@@ -539,6 +547,8 @@ void controlServos() {
   void flapOff() {
       digitalWriteFast(flap0, LOW);
       digitalWriteFast(flap1, LOW);
+      digitalWriteFast(LED, LOW);
+      digitalWriteFast(blueLED, LOW);
       flapTimer.end();
       flapping = false;
   }
@@ -571,7 +581,7 @@ void controlServos() {
   void zAccPeak() {//indicates if the copter touches down during landing process
     float zt = 0;
     mpu.set_acc_scale(BITS_FS_8G);
-    while(zt < 5) {
+    while(zt < 3) {
       mpu.read_acc();
       zt = mpu.accel_data[2]/4096;
     }
@@ -595,8 +605,8 @@ void controlServos() {
     regler.write(0);//stop the motor
     servo.write(90);//level the rotor blades
     userLiftControlActive = false;//disable the collective pitch
-    while(rxData[safetySwRx] < 1100) {}//wait for confirmation that the copter is attached to a pc to send the flightlog
-    //HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
+    while(rxData[safetySwRx] > 1100) {}//wait for confirmation that the copter is attached to a pc to send the flightlog
+    HWSERIAL.println(debugBuffer);//doesn't make much sense here; using debug wire instead
     WIREDSERIAL.println(debugBuffer);//send debug values to pc
     cli();
     while(1);

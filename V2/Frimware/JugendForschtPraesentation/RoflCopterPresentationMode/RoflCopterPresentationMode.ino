@@ -30,12 +30,10 @@
 
 //rx channels
   #define liftRx        0
-  #define rollRx        1
-  #define pitchRx       2
-  #define throttleRx    3
+  #define throttleRx    6
   #define safetySwRx    4
   #define killSwRx      5
-  #define nextSwRx        6
+  #define nextSwRx      3
 
 //instances
   //Servo instance                         
@@ -119,7 +117,7 @@
       } 
       if(!validRxValues) {
         if(firstRoundPassed) {
-           if((rxData[liftRx] < 1000) && (rxData[killSwRx] != rxData[pitchRx])) validRxValues = true;
+           if((rxData[liftRx] < 1000)) validRxValues = true;
         }
       }
     }
