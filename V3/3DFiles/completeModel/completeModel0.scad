@@ -18,7 +18,7 @@ $fn = 140;
         
 //PCB
     pcbHeight = 1.5;
-    spaceUnderPCB = 5;
+    spaceUnderPCB = 1;
 //IMU
     imuLength = 20.5;
     imuWidth = 10.5;
